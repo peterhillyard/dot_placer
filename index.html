@@ -926,12 +926,31 @@
             // Add JSON data
             zip.file('dots_data.json', jsonString);
 
+            // Prompt user for filename
+            let filename = prompt('Enter a name for the zip file:', 'dot_placer_export');
+            if (!filename) {
+                // User cancelled
+                return;
+            }
+            
+            // Remove .zip extension if user added it
+            if (filename.toLowerCase().endsWith('.zip')) {
+                filename = filename.slice(0, -4);
+            }
+            
+            // Sanitize filename (remove invalid characters)
+            filename = filename.replace(/[^a-z0-9_\-]/gi, '_');
+            
+            if (!filename) {
+                filename = 'dot_placer_export';
+            }
+
             // Generate zip and download
             const zipBlob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'dot_placer_export.zip';
+            a.download = filename + '.zip';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
