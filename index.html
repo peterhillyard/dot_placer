@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dot Placer - Image Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: #2c2c2c;
+            color: #fff;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #main-area {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+
+        #right-sidebar {
+            width: 300px;
+            background-color: #1a1a1a;
+            overflow-y: auto;
+            padding: 15px;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #right-sidebar h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .tile {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            transition: border-color 0.2s;
+        }
+
+        .tile.active {
+            border-color: #4CAF50;
+        }
+
+        .tile.hovered {
+            background-color: #3a3a3a;
+            border-color: #FFA500;
+        }
+
+        .tile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tile-title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .tile-remove {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .tile-remove:hover {
+            background-color: #d32f2f;
+        }
+
+        .tile select {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .tile-dots {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .dot-item {
+            display: flex;
+            align-items: center;
+            padding: 3px 0;
+            font-size: 11px;
+        }
+
+        .dot-item .dot-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            border: 1px solid #fff;
+        }
+
+        #add-tile-btn {
+            width: 100%;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        #fileInput {
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        #info {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .add-label-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .add-label-group input {
+            flex: 1;
+        }
+
+        .add-label-group button {
+            margin: 0;
+            padding: 5px 10px;
+        }
+
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-left: 5px;
+            vertical-align: middle;
+            border: 2px solid #fff;
+        }
+
+        #labels-list {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        #labels-list h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .label-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            padding: 4px 6px;
+            border-radius: 3px;
+        }
+
+        .label-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .label-item.default {
+            background-color: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+
+        .label-item .label-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #fff;
+        }
+
+        .label-item .label-name {
+            flex: 1;
+        }
+
+        .label-item .default-indicator {
+            font-size: 11px;
+            color: #4CAF50;
+            margin-left: 5px;
+            font-weight: bold;
+        }
+
+        .dot-size-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot-size-control input[type="number"] {
+            width: 80px;
+            padding: 5px;
+        }
+
+        #preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            overflow: auto;
+        }
+
+        #preview-modal.show {
+            display: block;
+        }
+
+        #preview-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            margin: 20px auto;
+            display: block;
+        }
+
+        #preview-close {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: #fff;
+            cursor: pointer;
+            z-index: 2001;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        #preview-close:hover {
+            color: #ccc;
+        }
+
+        #preview-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 2001;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            cursor: grab;
+            background-color: #2c2c2c;
+        }
+
+        #canvas-container.grabbing {
+            cursor: grabbing;
+        }
+
+        #canvas {
+            display: block;
+            image-rendering: auto;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-area">
+        <div id="controls">
+            <div class="control-group">
+                <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png">
+            </div>
+            
+            <div class="control-group">
+                <label>Load Dots Data:</label>
+                <input type="file" id="loadDotsInput" accept="application/json,.json">
+            </div>
+
+            <div class="control-group">
+                <label>Overlay Dot Size (pixels):</label>
+                <div class="dot-size-control">
+                    <input type="number" id="dotSizeInput" min="1" max="100" step="0.5" value="10">
+                    <button id="previewOverlayBtn">Preview</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Add New Label:</label>
+                <div class="add-label-group">
+                    <input type="text" id="newLabelInput" placeholder="Enter label name">
+                    <button id="addLabelBtn">Add</button>
+                </div>
+            </div>
+
+            <div id="labels-list">
+                <h4>Labels:</h4>
+                <div id="labels-container">
+                    <div style="font-size: 11px; color: #666;">No labels added yet</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="resetBtn">Reset View</button>
+                <button id="fitBtn">Fit to Screen</button>
+                <button id="clearDotsBtn">Clear All Dots</button>
+                <button id="saveDotsBtn">Save Dots</button>
+            </div>
+            
+            <div id="info">
+                Zoom: 100% | Click to place dots
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="right-sidebar">
+        <h3>Tiles</h3>
+        <button id="add-tile-btn">+ Add Tile</button>
+        <div id="tiles-container"></div>
+    </div>
+
+    <div id="preview-modal">
+        <button id="preview-close">&times;</button>
+        <img id="preview-content" alt="Overlay Preview">
+        <div id="preview-info">This is how the saved image will look with the current dot size</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const fileInput = document.getElementById('fileInput');
+        const loadDotsInput = document.getElementById('loadDotsInput');
+        const resetBtn = document.getElementById('resetBtn');
+        const fitBtn = document.getElementById('fitBtn');
+        const clearDotsBtn = document.getElementById('clearDotsBtn');
+        const saveDotsBtn = document.getElementById('saveDotsBtn');
+        const info = document.getElementById('info');
+        const newLabelInput = document.getElementById('newLabelInput');
+        const addLabelBtn = document.getElementById('addLabelBtn');
+        const addTileBtn = document.getElementById('add-tile-btn');
+        const tilesContainer = document.getElementById('tiles-container');
+        const dotSizeInput = document.getElementById('dotSizeInput');
+        const previewOverlayBtn = document.getElementById('previewOverlayBtn');
+        const previewModal = document.getElementById('preview-modal');
+        const previewContent = document.getElementById('preview-content');
+        const previewClose = document.getElementById('preview-close');
+
+        let image = null;
+        let originalImageFile = null; // Store the original image file
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        // Tile and label management
+        let tiles = []; // Array of {id, name, selectedLabel, dots: []}
+        let activeTileId = null;
+        let hoveredTileId = null; // Track which tile is being hovered
+        let hoveredDotTileId = null; // Track which tile's dot is being hovered on canvas
+        let tileIdCounter = 0;
+        let labels = {}; // Object mapping label name to color
+        let defaultLabel = null; // The default label to use when placing dots
+        let colorIndex = 0;
+        let overlayDotSize = 10; // Size of dots in the overlay image
+        const colors = [
+            '#FF0000', // red
+            '#00FF00', // green
+            '#0000FF', // blue
+            '#00FFFF', // cyan
+            '#FF00FF', // magenta
+            '#FFA500', // orange
+            '#800080'  // purple
+        ];
+
+        // Set canvas size to main area size
+        function resizeCanvas() {
+            const mainArea = document.getElementById('main-area');
+            canvas.width = mainArea.clientWidth;
+            canvas.height = mainArea.clientHeight;
+            draw();
+        }
+
+        // Generate overlay image with dots
+        function generateOverlayImage() {
+            if (!image) {
+                alert('Please load an image first!');
+                return null;
+            }
+
+            const size = parseFloat(dotSizeInput.value);
+            if (isNaN(size) || size < 1) {
+                alert('Please enter a valid dot size!');
+                return null;
+            }
+
+            // Check if there are any dots to overlay
+            let totalDots = 0;
+            tiles.forEach(tile => {
+                totalDots += tile.dots.length;
+            });
+
+            if (totalDots === 0) {
+                alert('Please place some dots on the image first!');
+                return null;
+            }
+
+            // Create a canvas for the image with dots overlay
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.width = image.width;
+            overlayCanvas.height = image.height;
+            const overlayCtx = overlayCanvas.getContext('2d');
+
+            // Draw the original image
+            overlayCtx.drawImage(image, 0, 0);
+
+            // Draw all dots on the overlay
+            tiles.forEach(tile => {
+                tile.dots.forEach(dot => {
+                    overlayCtx.fillStyle = dot.color;
+                    overlayCtx.strokeStyle = '#FFFFFF';
+                    overlayCtx.lineWidth = Math.max(2, size * 0.3);
+                    overlayCtx.beginPath();
+                    overlayCtx.arc(dot.x, dot.y, size, 0, Math.PI * 2);
+                    overlayCtx.fill();
+                    overlayCtx.stroke();
+                });
+            });
+
+            return overlayCanvas;
+        }
+
+        // Show overlay preview
+        function showOverlayPreview() {
+            const overlayCanvas = generateOverlayImage();
+            if (!overlayCanvas) return;
+
+            // Convert canvas to data URL and display in modal
+            previewContent.src = overlayCanvas.toDataURL('image/jpeg', 0.95);
+            previewModal.classList.add('show');
+        }
+
+        // Close preview modal
+        function closePreview() {
+            previewModal.classList.remove('show');
+            previewContent.src = '';
+        }
+
+        // Load image from file
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                originalImageFile = file; // Store the original file
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    image = new Image();
+                    image.onload = () => {
+                        fitToScreen();
+                    };
+                    image.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Load dots from file
+        loadDotsInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadDots(file);
+                // Clear the input so the same file can be loaded again
+                e.target.value = '';
+            }
+        });
+
+        // Draw image on canvas
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (image) {
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.scale(scale, scale);
+                ctx.drawImage(image, 0, 0);
+                
+                // Draw dots from all tiles
+                tiles.forEach(tile => {
+                    const isHovered = tile.id === hoveredTileId || tile.id === hoveredDotTileId;
+                    
+                    tile.dots.forEach(dot => {
+                        if (isHovered) {
+                            // Draw highlighted dot with glow effect
+                            ctx.shadowColor = dot.color;
+                            ctx.shadowBlur = 20 / scale;
+                            ctx.fillStyle = dot.color;
+                            ctx.strokeStyle = '#FFFFFF';
+                            ctx.lineWidth = 3 / scale;
+                            ctx.beginPath();
+                            ctx.arc(dot.x, dot.y, 12 / scale, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                        } else {
+                            // Draw normal dot
+                            ctx.fillStyle = dot.color;
+                            ctx.strokeStyle = '#FFFFFF';
+                            ctx.lineWidth = 2 / scale;
+                            ctx.beginPath();
+                            ctx.arc(dot.x, dot.y, 8 / scale, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+                        }
+                    });
+                });
+                
+                ctx.restore();
+            }
+
+            updateInfo();
+        }
+
+        // Update info display
+        function updateInfo() {
+            const zoomPercent = Math.round(scale * 100);
+            let totalDots = 0;
+            tiles.forEach(tile => totalDots += tile.dots.length);
+            info.textContent = `Zoom: ${zoomPercent}% | Total Dots: ${totalDots} | Click to place dots`;
+        }
+
+        // Add a new label
+        function addLabel(labelName) {
+            if (!labelName || labels[labelName]) return;
+            
+            const color = colors[colorIndex % colors.length];
+            colorIndex++;
+            
+            labels[labelName] = color;
+            
+            // Set as default if it's the first label
+            if (defaultLabel === null) {
+                defaultLabel = labelName;
+            }
+            
+            updateAllTileDropdowns();
+            updateLabelsList();
+        }
+
+        // Update the labels list display
+        function updateLabelsList() {
+            const labelsContainer = document.getElementById('labels-container');
+            const labelKeys = Object.keys(labels);
+            
+            if (labelKeys.length === 0) {
+                labelsContainer.innerHTML = '<div style="font-size: 11px; color: #666;">No labels added yet</div>';
+                return;
+            }
+            
+            labelsContainer.innerHTML = '';
+            labelKeys.forEach(labelName => {
+                const labelItem = document.createElement('div');
+                labelItem.className = 'label-item';
+                if (labelName === defaultLabel) {
+                    labelItem.classList.add('default');
+                }
+                labelItem.innerHTML = `
+                    <div class="label-color-dot" style="background-color: ${labels[labelName]}"></div>
+                    <div class="label-name">${labelName}</div>
+                    ${labelName === defaultLabel ? '<div class="default-indicator">★</div>' : ''}
+                `;
+                labelItem.onclick = () => setDefaultLabel(labelName);
+                labelItem.title = 'Click to set as default';
+                labelsContainer.appendChild(labelItem);
+            });
+        }
+
+        // Set a label as the default
+        function setDefaultLabel(labelName) {
+            if (labels[labelName]) {
+                defaultLabel = labelName;
+                updateLabelsList();
+            }
+        }
+
+        // Make function globally accessible
+        window.setDefaultLabel = setDefaultLabel;
+
+        // Update all tile label dropdowns
+        function updateAllTileDropdowns() {
+            tiles.forEach(tile => {
+                const select = document.querySelector(`[data-tile-id="${tile.id}"] select`);
+                if (select) {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Select a label</option>';
+                    
+                    Object.keys(labels).forEach(label => {
+                        const option = document.createElement('option');
+                        option.value = label;
+                        option.textContent = label;
+                        option.style.color = labels[label];
+                        select.appendChild(option);
+                    });
+                    
+                    if (labels[currentValue]) {
+                        select.value = currentValue;
+                    }
+                }
+            });
+        }
+
+        // Create a new tile
+        function createTile(label = '', dot = null) {
+            const tile = {
+                id: tileIdCounter++,
+                name: `Dot ${tileIdCounter}`,
+                selectedLabel: label,
+                dots: dot ? [dot] : []
+            };
+            
+            tiles.push(tile);
+            renderTile(tile);
+            setActiveTile(tile.id);
+            return tile;
+        }
+
+        // Render a tile in the sidebar
+        function renderTile(tile) {
+            const tileDiv = document.createElement('div');
+            tileDiv.className = 'tile';
+            tileDiv.dataset.tileId = tile.id;
+            
+            tileDiv.innerHTML = `
+                <div class="tile-header">
+                    <div class="tile-title">${tile.name}</div>
+                    <button class="tile-remove" onclick="removeTile(${tile.id})">Remove</button>
+                </div>
+                <div class="control-group">
+                    <label>Label:</label>
+                    <select onchange="updateTileLabel(${tile.id}, this.value)">
+                        <option value="">Select a label</option>
+                    </select>
+                </div>
+                <div class="tile-dots">
+                    <strong>Dots: <span class="dot-count">0</span></strong>
+                    <div class="dots-list"></div>
+                </div>
+            `;
+            
+            tileDiv.onclick = (e) => {
+                if (!e.target.closest('button') && !e.target.closest('select')) {
+                    setActiveTile(tile.id);
+                }
+            };
+            
+            // Add hover listeners
+            tileDiv.onmouseenter = () => {
+                hoveredTileId = tile.id;
+                hoveredDotTileId = null; // Clear dot hover when hovering tile directly
+                updateTileHighlights();
+                draw();
+            };
+            
+            tileDiv.onmouseleave = () => {
+                hoveredTileId = null;
+                updateTileHighlights();
+                draw();
+            };
+            
+            tilesContainer.appendChild(tileDiv);
+            
+            // Populate the dropdown
+            const select = tileDiv.querySelector('select');
+            Object.keys(labels).forEach(label => {
+                const option = document.createElement('option');
+                option.value = label;
+                option.textContent = label;
+                option.style.color = labels[label];
+                select.appendChild(option);
+            });
+            
+            // Set the selected value if tile has a label
+            if (tile.selectedLabel) {
+                select.value = tile.selectedLabel;
+            }
+        }
+
+        // Set active tile
+        function setActiveTile(tileId) {
+            activeTileId = tileId;
+            updateTileHighlights();
+        }
+
+        // Update tile highlights (active and hovered)
+        function updateTileHighlights() {
+            document.querySelectorAll('.tile').forEach(t => {
+                const id = parseInt(t.dataset.tileId);
+                t.classList.toggle('active', id === activeTileId);
+                t.classList.toggle('hovered', id === hoveredDotTileId);
+            });
+        }
+
+        // Update tile label
+        function updateTileLabel(tileId, label) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (tile) {
+                tile.selectedLabel = label;
+                
+                // Update all existing dots in this tile to the new label and color
+                if (label && labels[label]) {
+                    tile.dots.forEach(dot => {
+                        dot.label = label;
+                        dot.color = labels[label];
+                    });
+                    
+                    updateTileDisplay(tileId);
+                    draw();
+                }
+            }
+        }
+
+        // Remove tile
+        function removeTile(tileId) {
+            const index = tiles.findIndex(t => t.id === tileId);
+            if (index !== -1) {
+                tiles.splice(index, 1);
+                const tileDiv = document.querySelector(`[data-tile-id="${tileId}"]`);
+                if (tileDiv) {
+                    tileDiv.remove();
+                }
+                
+                if (activeTileId === tileId) {
+                    activeTileId = tiles.length > 0 ? tiles[0].id : null;
+                    if (activeTileId !== null) {
+                        setActiveTile(activeTileId);
+                    }
+                }
+                
+                draw();
+            }
+        }
+
+        // Update tile display
+        function updateTileDisplay(tileId) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (!tile) return;
+            
+            const tileDiv = document.querySelector(`[data-tile-id="${tileId}"]`);
+            if (!tileDiv) return;
+            
+            const dotCountSpan = tileDiv.querySelector('.dot-count');
+            const dotsList = tileDiv.querySelector('.dots-list');
+            
+            dotCountSpan.textContent = tile.dots.length;
+            
+            // Update dots list
+            dotsList.innerHTML = '';
+            tile.dots.forEach((dot, index) => {
+                const dotItem = document.createElement('div');
+                dotItem.className = 'dot-item';
+                dotItem.innerHTML = `
+                    <div class="dot-color" style="background-color: ${dot.color}"></div>
+                    <span>${dot.label} (${Math.round(dot.x)}, ${Math.round(dot.y)})</span>
+                `;
+                dotsList.appendChild(dotItem);
+            });
+        }
+
+        // Clear all dots
+        function clearDots() {
+            if (confirm('Are you sure you want to clear all dots from all tiles?')) {
+                tiles.forEach(tile => {
+                    tile.dots = [];
+                    updateTileDisplay(tile.id);
+                });
+                draw();
+            }
+        }
+
+        // Save dots to JSON file (now creates a zip with image and data)
+        async function saveDots() {
+            if (!image) {
+                alert('Please load an image first!');
+                return;
+            }
+
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip library not loaded. Please refresh the page.');
+                return;
+            }
+
+            const size = parseFloat(dotSizeInput.value);
+            if (isNaN(size) || size < 1) {
+                alert('Please enter a valid dot size!');
+                return;
+            }
+
+            overlayDotSize = size;
+
+            // Collect all dots from all tiles
+            const dotsData = [];
+            tiles.forEach(tile => {
+                tile.dots.forEach(dot => {
+                    dotsData.push({
+                        coordinate_pixels: [Math.round(dot.x), Math.round(dot.y)],
+                        label: dot.label
+                    });
+                });
+            });
+
+            // Create JSON string
+            const jsonString = JSON.stringify(dotsData, null, 2);
+
+            // Generate overlay image
+            const overlayCanvas = generateOverlayImage();
+            if (!overlayCanvas) return;
+
+            // Convert overlay canvas to blob
+            const overlayBlob = await new Promise(resolve => {
+                overlayCanvas.toBlob(resolve, 'image/jpeg', 0.95);
+            });
+
+            // Create zip file
+            const zip = new JSZip();
+
+            // Add original image
+            if (originalImageFile) {
+                zip.file('original_image.' + originalImageFile.name.split('.').pop(), originalImageFile);
+            } else {
+                // Fallback: convert current image to blob
+                const originalBlob = await new Promise(resolve => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = image.width;
+                    tempCanvas.height = image.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(image, 0, 0);
+                    tempCanvas.toBlob(resolve, 'image/jpeg', 0.95);
+                });
+                zip.file('original_image.jpg', originalBlob);
+            }
+
+            // Add image with dots overlay
+            zip.file('image_with_dots.jpg', overlayBlob);
+
+            // Add JSON data
+            zip.file('dots_data.json', jsonString);
+
+            // Generate zip and download
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dot_placer_export.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Load dots from JSON file
+        function loadDots(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const dotsData = JSON.parse(event.target.result);
+                    
+                    if (!Array.isArray(dotsData)) {
+                        alert('Invalid file format: expected an array of dots');
+                        return;
+                    }
+                    
+                    // Clear existing tiles and dots
+                    tiles.forEach(tile => {
+                        const tileDiv = document.querySelector(`[data-tile-id="${tile.id}"]`);
+                        if (tileDiv) {
+                            tileDiv.remove();
+                        }
+                    });
+                    tiles = [];
+                    activeTileId = null;
+                    hoveredTileId = null;
+                    hoveredDotTileId = null;
+                    tileIdCounter = 0;
+                    
+                    // Extract unique labels and create them if they don't exist
+                    const uniqueLabels = new Set();
+                    dotsData.forEach(dotData => {
+                        if (dotData.label) {
+                            uniqueLabels.add(dotData.label);
+                        }
+                    });
+                    
+                    // Create labels that don't exist yet
+                    uniqueLabels.forEach(label => {
+                        if (!labels[label]) {
+                            addLabel(label);
+                        }
+                    });
+                    
+                    // Create tiles and dots
+                    dotsData.forEach(dotData => {
+                        if (!dotData.coordinate_pixels || !Array.isArray(dotData.coordinate_pixels) || 
+                            dotData.coordinate_pixels.length !== 2 || !dotData.label) {
+                            console.warn('Skipping invalid dot data:', dotData);
+                            return;
+                        }
+                        
+                        const [x, y] = dotData.coordinate_pixels;
+                        const dot = {
+                            x: x,
+                            y: y,
+                            label: dotData.label,
+                            color: labels[dotData.label] || '#FFFFFF'
+                        };
+                        
+                        // Create a tile for this dot
+                        const tile = createTile(dotData.label, dot);
+                        updateTileDisplay(tile.id);
+                    });
+                    
+                    draw();
+                    
+                    alert(`Loaded ${dotsData.length} dots successfully!`);
+                } catch (error) {
+                    alert('Error loading file: ' + error.message);
+                    console.error('Error loading dots:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Make functions globally accessible
+        window.updateTileLabel = updateTileLabel;
+        window.removeTile = removeTile;
+
+        // Reset view
+        function resetView() {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            draw();
+        }
+
+        // Fit image to screen
+        function fitToScreen() {
+            if (!image) return;
+
+            const scaleX = canvas.width / image.width;
+            const scaleY = canvas.height / image.height;
+            scale = Math.min(scaleX, scaleY) * 0.9; // 90% of available space
+
+            offsetX = (canvas.width - image.width * scale) / 2;
+            offsetY = (canvas.height - image.height * scale) / 2;
+
+            draw();
+        }
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            if (!image) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate mouse position relative to image
+            const imageX = (mouseX - offsetX) / scale;
+            const imageY = (mouseY - offsetY) / scale;
+
+            // Zoom
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            scale *= zoomFactor;
+
+            // Limit scale
+            scale = Math.max(0.1, Math.min(scale, 10));
+
+            // Adjust offset to zoom towards mouse position
+            offsetX = mouseX - imageX * scale;
+            offsetY = mouseY - imageY * scale;
+
+            draw();
+        });
+
+        // Find which tile's dot is under the mouse cursor
+        function findDotUnderMouse(mouseX, mouseY) {
+            if (!image) return null;
+            
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = mouseX - rect.left;
+            const canvasY = mouseY - rect.top;
+            
+            // Convert screen coordinates to image coordinates
+            const imageX = (canvasX - offsetX) / scale;
+            const imageY = (canvasY - offsetY) / scale;
+            
+            // Hit radius in image coordinates (accounts for zoom)
+            const hitRadius = 15 / scale;
+            
+            // Check each tile's dots (in reverse order so we check top dots first)
+            for (let i = tiles.length - 1; i >= 0; i--) {
+                const tile = tiles[i];
+                for (let j = tile.dots.length - 1; j >= 0; j--) {
+                    const dot = tile.dots[j];
+                    const distance = Math.sqrt(
+                        Math.pow(imageX - dot.x, 2) + 
+                        Math.pow(imageY - dot.y, 2)
+                    );
+                    
+                    // Check if mouse is within dot radius
+                    if (distance <= hitRadius) {
+                        return tile.id;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // Scroll tile into view in sidebar
+        function scrollTileIntoView(tileId) {
+            const tileDiv = document.querySelector(`[data-tile-id="${tileId}"]`);
+            if (tileDiv) {
+                tileDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Mouse drag pan and dot placement
+        let mouseDownTime = 0;
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!image) return;
+            
+            mouseDownTime = Date.now();
+            mouseDownX = e.clientX;
+            mouseDownY = e.clientY;
+            
+            isDragging = true;
+            dragStartX = e.clientX - offsetX;
+            dragStartY = e.clientY - offsetY;
+            container.classList.add('grabbing');
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            // Check for dot hovering (only when not dragging)
+            if (!isDragging) {
+                const tileId = findDotUnderMouse(e.clientX, e.clientY);
+                if (tileId !== hoveredDotTileId) {
+                    hoveredDotTileId = tileId;
+                    hoveredTileId = null; // Clear tile hover when hovering dot
+                    updateTileHighlights();
+                    draw();
+                    if (tileId !== null) {
+                        // Use a slight delay to avoid conflicts with scrolling
+                        setTimeout(() => {
+                            if (hoveredDotTileId === tileId) {
+                                scrollTileIntoView(tileId);
+                            }
+                        }, 50);
+                    }
+                }
+            }
+            
+            if (!isDragging) return;
+            
+            offsetX = e.clientX - dragStartX;
+            offsetY = e.clientY - dragStartY;
+            draw();
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const clickDuration = Date.now() - mouseDownTime;
+            const dragDistance = Math.sqrt(
+                Math.pow(e.clientX - mouseDownX, 2) + 
+                Math.pow(e.clientY - mouseDownY, 2)
+            );
+            
+            // If it was a quick click without much movement, place a dot
+            if (clickDuration < 200 && dragDistance < 5) {
+                // Use the default label
+                let selectedLabel = defaultLabel;
+                
+                // If no default label, check active tile
+                if (!selectedLabel && activeTileId !== null) {
+                    const activeTile = tiles.find(t => t.id === activeTileId);
+                    if (activeTile && activeTile.selectedLabel) {
+                        selectedLabel = activeTile.selectedLabel;
+                    }
+                }
+                
+                // If still no label, prompt user
+                if (!selectedLabel) {
+                    alert('Please add a label first!');
+                    return;
+                }
+                
+                if (image) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // Convert screen coordinates to image coordinates
+                    const imageX = (clickX - offsetX) / scale;
+                    const imageY = (clickY - offsetY) / scale;
+                    
+                    // Create a new dot
+                    const dot = {
+                        x: imageX,
+                        y: imageY,
+                        label: selectedLabel,
+                        color: labels[selectedLabel]
+                    };
+                    
+                    // Create a new tile for this dot
+                    const newTile = createTile(selectedLabel, dot);
+                    updateTileDisplay(newTile.id);
+                    draw();
+                }
+            }
+            
+            isDragging = false;
+            container.classList.remove('grabbing');
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            container.classList.remove('grabbing');
+            hoveredDotTileId = null;
+            updateTileHighlights();
+            draw();
+        });
+
+        // Touch support
+        let lastTouchDistance = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            
+            if (!image) return;
+
+            if (e.touches.length === 1) {
+                // Single touch - pan
+                isDragging = true;
+                dragStartX = e.touches[0].clientX - offsetX;
+                dragStartY = e.touches[0].clientY - offsetY;
+            } else if (e.touches.length === 2) {
+                // Two touches - zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                
+                lastTouchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                lastTouchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            
+            if (!image) return;
+
+            if (e.touches.length === 1 && isDragging) {
+                // Pan
+                offsetX = e.touches[0].clientX - dragStartX;
+                offsetY = e.touches[0].clientY - dragStartY;
+                draw();
+            } else if (e.touches.length === 2) {
+                // Zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                if (lastTouchDistance > 0) {
+                    const imageX = (touchX - offsetX) / scale;
+                    const imageY = (touchY - offsetY) / scale;
+
+                    const zoomFactor = distance / lastTouchDistance;
+                    scale *= zoomFactor;
+                    scale = Math.max(0.1, Math.min(scale, 10));
+
+                    offsetX = touchX - imageX * scale;
+                    offsetY = touchY - imageY * scale;
+
+                    draw();
+                }
+
+                lastTouchDistance = distance;
+                lastTouchX = touchX;
+                lastTouchY = touchY;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            isDragging = false;
+            lastTouchDistance = 0;
+        });
+
+        // Button events
+        resetBtn.addEventListener('click', resetView);
+        fitBtn.addEventListener('click', fitToScreen);
+        clearDotsBtn.addEventListener('click', clearDots);
+        saveDotsBtn.addEventListener('click', saveDots);
+
+        // Add label button
+        addLabelBtn.addEventListener('click', () => {
+            const labelName = newLabelInput.value.trim();
+            if (labelName) {
+                addLabel(labelName);
+                newLabelInput.value = '';
+            }
+        });
+
+        // Add label on Enter key
+        newLabelInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const labelName = newLabelInput.value.trim();
+                if (labelName) {
+                    addLabel(labelName);
+                    newLabelInput.value = '';
+                }
+            }
+        });
+
+        // Add tile button
+        addTileBtn.addEventListener('click', () => {
+            createTile();
+        });
+
+        // Preview overlay button
+        previewOverlayBtn.addEventListener('click', showOverlayPreview);
+
+        // Close preview modal
+        previewClose.addEventListener('click', closePreview);
+        previewModal.addEventListener('click', (e) => {
+            if (e.target === previewModal) {
+                closePreview();
+            }
+        });
+
+        // Window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initialize
+        resizeCanvas();
+    </script>
+</body>
+</html>
