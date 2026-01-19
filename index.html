@@ -849,11 +849,15 @@
 
         // Clear all dots
         function clearDots() {
-            if (confirm('Are you sure you want to clear all dots from all tiles?')) {
-                tiles.forEach(tile => {
-                    tile.dots = [];
-                    updateTileDisplay(tile.id);
-                });
+            if (confirm('Are you sure you want to clear all dots and tiles?')) {
+                // Clear all tile divs from DOM
+                const tilesContainer = document.getElementById('tiles-container');
+                tilesContainer.innerHTML = '';
+                
+                // Clear tiles array
+                tiles = [];
+                activeTileId = null;
+                
                 draw();
             }
         }
