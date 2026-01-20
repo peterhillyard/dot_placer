@@ -350,7 +350,7 @@
             
             <div class="control-group">
                 <label>Load Dots Data:</label>
-                <input type="file" id="loadDotsInput" accept="application/json,.json">
+                <input type="file" id="loadDotsInput" accept=".zip,application/zip">
             </div>
 
             <div class="control-group">
@@ -607,7 +607,21 @@
             const zoomPercent = Math.round(scale * 100);
             let totalDots = 0;
             tiles.forEach(tile => totalDots += tile.dots.length);
-            info.textContent = `Zoom: ${zoomPercent}% | Total Dots: ${totalDots} | Click to place dots`;
+            const dotsByLabel = {};
+            tiles.forEach(tile => {
+                tile.dots.forEach(dot => {
+                    dotsByLabel[dot.label] = (dotsByLabel[dot.label] || 0) + 1;
+                });
+            });
+            
+            let labelCounts = '';
+            Object.keys(dotsByLabel).sort().forEach(label => {
+                if (labelCounts) labelCounts += ', ';
+                labelCounts += `${label}: ${dotsByLabel[label]}`;
+            });
+            
+            const labelInfo = labelCounts ? ` (${labelCounts})` : '';
+            info.textContent = `Zoom: ${zoomPercent}% | Total Dots: ${totalDots}${labelInfo} | Click to place dots`;
         }
 
         // Add a new label
@@ -713,7 +727,6 @@
             
             tileDiv.innerHTML = `
                 <div class="tile-header">
-                    <div class="tile-title">${tile.name}</div>
                     <button class="tile-remove" onclick="removeTile(${tile.id})">Remove</button>
                 </div>
                 <div class="control-group">
@@ -723,7 +736,6 @@
                     </select>
                 </div>
                 <div class="tile-dots">
-                    <strong>Dots: <span class="dot-count">0</span></strong>
                     <div class="dots-list"></div>
                 </div>
             `;
@@ -829,10 +841,7 @@
             const tileDiv = document.querySelector(`[data-tile-id="${tileId}"]`);
             if (!tileDiv) return;
             
-            const dotCountSpan = tileDiv.querySelector('.dot-count');
             const dotsList = tileDiv.querySelector('.dots-list');
-            
-            dotCountSpan.textContent = tile.dots.length;
             
             // Update dots list
             dotsList.innerHTML = '';
@@ -962,77 +971,119 @@
         }
 
         // Load dots from JSON file
-        function loadDots(file) {
+        async function loadDots(file) {
             if (!file) return;
             
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const dotsData = JSON.parse(event.target.result);
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip library not loaded. Please refresh the page.');
+                return;
+            }
+            
+            try {
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+                
+                // Check for required files
+                if (!zipContent.files['dots_data.json']) {
+                    alert('Error: dots_data.json not found in zip file');
+                    return;
+                }
+                
+                if (!zipContent.files['original_image.jpg']) {
+                    alert('Error: original_image.jpg not found in zip file');
+                    return;
+                }
+                
+                // Load the original image first
+                const imageBlob = await zipContent.files['original_image.jpg'].async('blob');
+                const imageUrl = URL.createObjectURL(imageBlob);
+                
+                // Load the image
+                const img = new Image();
+                img.onload = async () => {
+                    image = img;
+                    resetView();
+                    draw();
                     
-                    if (!Array.isArray(dotsData)) {
-                        alert('Invalid file format: expected an array of dots');
-                        return;
-                    }
-                    
-                    // Clear existing tiles and dots
-                    tiles.forEach(tile => {
-                        const tileDiv = document.querySelector(`[data-tile-id="${tile.id}"]`);
-                        if (tileDiv) {
-                            tileDiv.remove();
-                        }
-                    });
-                    tiles = [];
-                    activeTileId = null;
-                    hoveredTileId = null;
-                    hoveredDotTileId = null;
-                    tileIdCounter = 0;
-                    
-                    // Extract unique labels and create them if they don't exist
-                    const uniqueLabels = new Set();
-                    dotsData.forEach(dotData => {
-                        if (dotData.label) {
-                            uniqueLabels.add(dotData.label);
-                        }
-                    });
-                    
-                    // Create labels that don't exist yet
-                    uniqueLabels.forEach(label => {
-                        if (!labels[label]) {
-                            addLabel(label);
-                        }
-                    });
-                    
-                    // Create tiles and dots
-                    dotsData.forEach(dotData => {
-                        if (!dotData.coordinate_pixels || !Array.isArray(dotData.coordinate_pixels) || 
-                            dotData.coordinate_pixels.length !== 2 || !dotData.label) {
-                            console.warn('Skipping invalid dot data:', dotData);
+                    // Now process the dots data
+                    try {
+                        const dotsJsonText = await zipContent.files['dots_data.json'].async('text');
+                        const dotsData = JSON.parse(dotsJsonText);
+                        
+                        if (!Array.isArray(dotsData)) {
+                            alert('Invalid file format: expected an array of dots');
                             return;
                         }
                         
-                        const [x, y] = dotData.coordinate_pixels;
-                        const dot = {
-                            x: x,
-                            y: y,
-                            label: dotData.label,
-                            color: labels[dotData.label] || '#FFFFFF'
-                        };
+                        // Clear existing tiles and dots
+                        tiles.forEach(tile => {
+                            const tileDiv = document.querySelector(`[data-tile-id="${tile.id}"]`);
+                            if (tileDiv) {
+                                tileDiv.remove();
+                            }
+                        });
+                        tiles = [];
+                        activeTileId = null;
+                        hoveredTileId = null;
+                        hoveredDotTileId = null;
+                        tileIdCounter = 0;
                         
-                        // Create a tile for this dot
-                        const tile = createTile(dotData.label, dot);
-                        updateTileDisplay(tile.id);
-                    });
-                    
-                    draw();
-                    
-                    alert(`Loaded ${dotsData.length} dots successfully!`);
-                } catch (error) {
-                    alert('Error loading file: ' + error.message);
-                    console.error('Error loading dots:', error);
-                }
-            };
-            reader.readAsText(file);
+                        // Extract unique labels and create them if they don't exist
+                        const uniqueLabels = new Set();
+                        dotsData.forEach(dotData => {
+                            if (dotData.label) {
+                                uniqueLabels.add(dotData.label);
+                            }
+                        });
+                        
+                        // Create labels that don't exist yet
+                        uniqueLabels.forEach(label => {
+                            if (!labels[label]) {
+                                addLabel(label);
+                            }
+                        });
+                        
+                        // Create tiles and dots
+                        dotsData.forEach(dotData => {
+                            if (!dotData.coordinate_pixels || !Array.isArray(dotData.coordinate_pixels) || 
+                                dotData.coordinate_pixels.length !== 2 || !dotData.label) {
+                                console.warn('Skipping invalid dot data:', dotData);
+                                return;
+                            }
+                            
+                            const [x, y] = dotData.coordinate_pixels;
+                            const dot = {
+                                x: x,
+                                y: y,
+                                label: dotData.label,
+                                color: labels[dotData.label] || '#FFFFFF'
+                            };
+                            
+                            // Create a tile for this dot
+                            const tile = createTile(dotData.label, dot);
+                            updateTileDisplay(tile.id);
+                        });
+                        
+                        draw();
+                        
+                        alert(`Loaded ${dotsData.length} dots successfully!`);
+                    } catch (error) {
+                        alert('Error processing dots data: ' + error.message);
+                        console.error('Error loading dots:', error);
+                    }
+                };
+                
+                img.onerror = () => {
+                    alert('Error loading image from zip file');
+                    URL.revokeObjectURL(imageUrl);
+                };
+                
+                img.src = imageUrl;
+                
+            } catch (error) {
+                alert('Error reading zip file: ' + error.message);
+                console.error('Error loading zip:', error);
+            }
         }
 
         // Make functions globally accessible
