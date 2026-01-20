@@ -102,6 +102,32 @@
             margin-bottom: 10px;
         }
 
+        .tile textarea {
+            width: 100%;
+            min-height: 50px;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+
+        .tile textarea {
+            width: 100%;
+            min-height: 50px;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+
         .tile-dots {
             font-size: 12px;
             color: #aaa;
@@ -705,12 +731,13 @@
         }
 
         // Create a new tile
-        function createTile(label = '', dot = null) {
+        function createTile(label = '', dot = null, notes = '') {
             const tile = {
                 id: tileIdCounter++,
                 name: `Dot ${tileIdCounter}`,
                 selectedLabel: label,
-                dots: dot ? [dot] : []
+                dots: dot ? [dot] : [],
+                notes: notes
             };
             
             tiles.push(tile);
@@ -727,6 +754,7 @@
             
             tileDiv.innerHTML = `
                 <div class="tile-header">
+                    <div class="tile-title">${tile.name}</div>
                     <button class="tile-remove" onclick="removeTile(${tile.id})">Remove</button>
                 </div>
                 <div class="control-group">
@@ -734,6 +762,10 @@
                     <select onchange="updateTileLabel(${tile.id}, this.value)">
                         <option value="">Select a label</option>
                     </select>
+                </div>
+                <div class="control-group">
+                    <label>Notes:</label>
+                    <textarea placeholder="Add notes..." oninput="updateTileNotes(${tile.id}, this.value)">${tile.notes}</textarea>
                 </div>
                 <div class="tile-dots">
                     <div class="dots-list"></div>
@@ -809,6 +841,22 @@
                     updateTileDisplay(tileId);
                     draw();
                 }
+            }
+        }
+
+        // Update tile notes
+        function updateTileNotes(tileId, notes) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (tile) {
+                tile.notes = notes;
+            }
+        }
+
+        // Remove tile
+        function updateTileNotes(tileId, notes) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (tile) {
+                tile.notes = notes;
             }
         }
 
@@ -897,7 +945,8 @@
                 tile.dots.forEach(dot => {
                     dotsData.push({
                         coordinate_pixels: [Math.round(dot.x), Math.round(dot.y)],
-                        label: dot.label
+                        label: dot.label,
+                        notes: tile.notes || ''
                     });
                 });
             });
@@ -1060,7 +1109,7 @@
                             };
                             
                             // Create a tile for this dot
-                            const tile = createTile(dotData.label, dot);
+                            const tile = createTile(dotData.label, dot, dotData.notes || '');
                             updateTileDisplay(tile.id);
                         });
                         
@@ -1088,6 +1137,7 @@
 
         // Make functions globally accessible
         window.updateTileLabel = updateTileLabel;
+        window.updateTileNotes = updateTileNotes;
         window.removeTile = removeTile;
 
         // Reset view
