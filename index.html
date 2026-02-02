@@ -461,6 +461,7 @@
         let isDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
+        let draggedDot = null; // {tileId, dotIndex}
 
         // Tile and label management
         let tiles = []; // Array of {id, name, selectedLabel, dots: []}
@@ -1217,7 +1218,7 @@
                     
                     // Check if mouse is within dot radius
                     if (distance <= hitRadius) {
-                        return tile.id;
+                        return { tileId: tile.id, dotIndex: j };
                     }
                 }
             }
@@ -1245,6 +1246,16 @@
             mouseDownX = e.clientX;
             mouseDownY = e.clientY;
             
+            // Check if we clicked on an existing dot
+            const dotInfo = findDotUnderMouse(e.clientX, e.clientY);
+            if (dotInfo && dotInfo.tileId !== null) {
+                // Start dragging the dot
+                draggedDot = dotInfo;
+                container.classList.add('grabbing');
+                return;
+            }
+            
+            // Otherwise, start panning
             isDragging = true;
             dragStartX = e.clientX - offsetX;
             dragStartY = e.clientY - offsetY;
@@ -1252,9 +1263,31 @@
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            // If dragging a dot, update its position
+            if (draggedDot) {
+                const rect = canvas.getBoundingClientRect();
+                const canvasX = e.clientX - rect.left;
+                const canvasY = e.clientY - rect.top;
+                
+                // Convert screen coordinates to image coordinates
+                const imageX = (canvasX - offsetX) / scale;
+                const imageY = (canvasY - offsetY) / scale;
+                
+                // Update the dot's position
+                const tile = tiles.find(t => t.id === draggedDot.tileId);
+                if (tile && tile.dots[draggedDot.dotIndex]) {
+                    tile.dots[draggedDot.dotIndex].x = imageX;
+                    tile.dots[draggedDot.dotIndex].y = imageY;
+                    updateTileDisplay(tile.id);
+                    draw();
+                }
+                return;
+            }
+            
             // Check for dot hovering (only when not dragging)
             if (!isDragging) {
-                const tileId = findDotUnderMouse(e.clientX, e.clientY);
+                const dotInfo = findDotUnderMouse(e.clientX, e.clientY);
+                const tileId = dotInfo ? dotInfo.tileId : null;
                 if (tileId !== hoveredDotTileId) {
                     hoveredDotTileId = tileId;
                     hoveredTileId = null; // Clear tile hover when hovering dot
@@ -1279,6 +1312,13 @@
         });
 
         canvas.addEventListener('mouseup', (e) => {
+            // If we were dragging a dot, finish the drag
+            if (draggedDot) {
+                draggedDot = null;
+                container.classList.remove('grabbing');
+                return;
+            }
+            
             const clickDuration = Date.now() - mouseDownTime;
             const dragDistance = Math.sqrt(
                 Math.pow(e.clientX - mouseDownX, 2) + 
@@ -1334,6 +1374,7 @@
 
         canvas.addEventListener('mouseleave', () => {
             isDragging = false;
+            draggedDot = null;
             container.classList.remove('grabbing');
             hoveredDotTileId = null;
             updateTileHighlights();
