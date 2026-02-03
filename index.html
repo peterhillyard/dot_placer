@@ -263,6 +263,23 @@
             font-weight: bold;
         }
 
+        .label-item .label-color-picker {
+            opacity: 0;
+            pointer-events: none;
+            margin-left: 8px;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            border: 1px solid #fff;
+            border-radius: 3px;
+            transition: opacity 0.2s;
+        }
+
+        .label-item:hover .label-color-picker {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         .dot-size-control {
             display: flex;
             align-items: center;
@@ -689,9 +706,16 @@
                 labelItem.innerHTML = `
                     <div class="label-color-dot" style="background-color: ${labels[labelName]}"></div>
                     <div class="label-name">${labelName}</div>
+                    <input type="color" class="label-color-picker" value="${labels[labelName]}" onchange="updateLabelColor('${labelName}', this.value)" title="Click to change color">
                     ${labelName === defaultLabel ? '<div class="default-indicator">★</div>' : ''}
                 `;
-                labelItem.onclick = () => setDefaultLabel(labelName);
+                
+                // Add click handler for setting as default (excluding color picker)
+                labelItem.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('label-color-picker')) {
+                        setDefaultLabel(labelName);
+                    }
+                });
                 labelItem.title = 'Click to set as default';
                 labelsContainer.appendChild(labelItem);
             });
@@ -705,8 +729,31 @@
             }
         }
 
-        // Make function globally accessible
+        // Update a label's color
+        function updateLabelColor(labelName, newColor) {
+            if (labels[labelName]) {
+                labels[labelName] = newColor;
+                
+                // Update all dots with this label to the new color
+                tiles.forEach(tile => {
+                    tile.dots.forEach(dot => {
+                        if (dot.label === labelName) {
+                            dot.color = newColor;
+                        }
+                    });
+                    // Re-render the tile to show updated dot colors
+                    updateTileDisplay(tile.id);
+                });
+                
+                updateAllTileDropdowns();
+                updateLabelsList();
+                draw(); // Redraw canvas to reflect color changes
+            }
+        }
+
+        // Make functions globally accessible
         window.setDefaultLabel = setDefaultLabel;
+        window.updateLabelColor = updateLabelColor;
 
         // Update all tile label dropdowns
         function updateAllTileDropdowns() {
