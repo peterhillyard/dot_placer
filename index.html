@@ -703,20 +703,97 @@
                 if (labelName === defaultLabel) {
                     labelItem.classList.add('default');
                 }
-                labelItem.innerHTML = `
-                    <div class="label-color-dot" style="background-color: ${labels[labelName]}"></div>
-                    <div class="label-name">${labelName}</div>
-                    <input type="color" class="label-color-picker" value="${labels[labelName]}" onchange="updateLabelColor('${labelName}', this.value)" title="Click to change color">
-                    ${labelName === defaultLabel ? '<div class="default-indicator">★</div>' : ''}
-                `;
+                
+                // Create editable label name
+                const labelNameDiv = document.createElement('div');
+                labelNameDiv.className = 'label-name';
+                labelNameDiv.textContent = labelName;
+                labelNameDiv.contentEditable = 'true';
+                labelNameDiv.style.cursor = 'text';
+                labelNameDiv.style.outline = 'none';
+                
+                // Add styling for edit mode
+                labelNameDiv.addEventListener('focus', () => {
+                    labelNameDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                    labelNameDiv.style.borderRadius = '3px';
+                    labelNameDiv.style.padding = '2px 4px';
+                    labelNameDiv.style.margin = '-2px -4px';
+                });
+                
+                labelNameDiv.addEventListener('blur', () => {
+                    labelNameDiv.style.backgroundColor = '';
+                    labelNameDiv.style.borderRadius = '';
+                    labelNameDiv.style.padding = '';
+                    labelNameDiv.style.margin = '';
+                    
+                    const newName = labelNameDiv.textContent.trim();
+                    
+                    // Check if name changed
+                    if (newName && newName !== labelName && !labels[newName]) {
+                        renameLabel(labelName, newName);
+                    } else if (!newName) {
+                        // Restore original name if empty
+                        labelNameDiv.textContent = labelName;
+                    } else if (newName !== labelName && labels[newName]) {
+                        // Restore original name if new name already exists
+                        alert('A label with that name already exists!');
+                        labelNameDiv.textContent = labelName;
+                    } else {
+                        // Restore original name if no change
+                        labelNameDiv.textContent = labelName;
+                    }
+                });
+                
+                // Prevent default behavior on Enter and prevent line breaks
+                labelNameDiv.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        labelNameDiv.blur();
+                    }
+                    // Prevent pasting with formatting
+                    if (e.key === 'v' && e.ctrlKey) {
+                        e.preventDefault();
+                    }
+                });
+                
+                // Handle paste to plain text only
+                labelNameDiv.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                });
+                
+                const colorDot = document.createElement('div');
+                colorDot.className = 'label-color-dot';
+                colorDot.style.backgroundColor = labels[labelName];
+                
+                const colorPicker = document.createElement('input');
+                colorPicker.type = 'color';
+                colorPicker.className = 'label-color-picker';
+                colorPicker.value = labels[labelName];
+                colorPicker.title = 'Click to change color';
+                colorPicker.addEventListener('change', function() {
+                    updateLabelColor(labelName, this.value);
+                });
+                
+                labelItem.appendChild(colorDot);
+                labelItem.appendChild(labelNameDiv);
+                labelItem.appendChild(colorPicker);
+                
+                if (labelName === defaultLabel) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'default-indicator';
+                    indicator.textContent = '★';
+                    labelItem.appendChild(indicator);
+                }
                 
                 // Add click handler for setting as default (excluding color picker)
                 labelItem.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('label-color-picker')) {
+                    if (!e.target.classList.contains('label-color-picker') && e.target !== labelNameDiv) {
                         setDefaultLabel(labelName);
                     }
                 });
-                labelItem.title = 'Click to set as default';
+                labelItem.title = 'Click to set as default, double-click name to edit';
                 labelsContainer.appendChild(labelItem);
             });
         }
@@ -727,6 +804,41 @@
                 defaultLabel = labelName;
                 updateLabelsList();
             }
+        }
+
+        // Rename a label
+        function renameLabel(oldName, newName) {
+            if (!labels[oldName]) return;
+            
+            // Update labels object
+            const color = labels[oldName];
+            delete labels[oldName];
+            labels[newName] = color;
+            
+            // Update default label if it was the renamed one
+            if (defaultLabel === oldName) {
+                defaultLabel = newName;
+            }
+            
+            // Update all tiles that use this label
+            tiles.forEach(tile => {
+                if (tile.selectedLabel === oldName) {
+                    tile.selectedLabel = newName;
+                }
+                
+                tile.dots.forEach(dot => {
+                    if (dot.label === oldName) {
+                        dot.label = newName;
+                    }
+                });
+                
+                // Re-render the tile to show updated label
+                updateTileDisplay(tile.id);
+            });
+            
+            updateAllTileDropdowns();
+            updateLabelsList();
+            draw(); // Redraw canvas to reflect label changes
         }
 
         // Update a label's color
@@ -754,13 +866,13 @@
         // Make functions globally accessible
         window.setDefaultLabel = setDefaultLabel;
         window.updateLabelColor = updateLabelColor;
+        window.renameLabel = renameLabel;
 
         // Update all tile label dropdowns
         function updateAllTileDropdowns() {
             tiles.forEach(tile => {
                 const select = document.querySelector(`[data-tile-id="${tile.id}"] select`);
                 if (select) {
-                    const currentValue = select.value;
                     select.innerHTML = '<option value="">Select a label</option>';
                     
                     Object.keys(labels).forEach(label => {
@@ -771,8 +883,10 @@
                         select.appendChild(option);
                     });
                     
-                    if (labels[currentValue]) {
-                        select.value = currentValue;
+                    // Use the tile's selectedLabel instead of the select's current value,
+                    // since label names may have been changed
+                    if (tile.selectedLabel && labels[tile.selectedLabel]) {
+                        select.value = tile.selectedLabel;
                     }
                 }
             });
@@ -999,8 +1113,14 @@
                 });
             });
 
+            // Create JSON object with labels and their colors
+            const jsonData = {
+                labels: labels,
+                dots: dotsData
+            };
+
             // Create JSON string
-            const jsonString = JSON.stringify(dotsData, null, 2);
+            const jsonString = JSON.stringify(jsonData, null, 2);
 
             // Generate overlay image
             const overlayCanvas = generateOverlayImage();
@@ -1105,7 +1225,23 @@
                     // Now process the dots data
                     try {
                         const dotsJsonText = await zipContent.files['dots_data.json'].async('text');
-                        const dotsData = JSON.parse(dotsJsonText);
+                        const dotsJson = JSON.parse(dotsJsonText);
+                        
+                        // Handle both old format (array) and new format (object with labels and dots)
+                        let dotsData;
+                        let loadedLabels = {};
+                        
+                        if (Array.isArray(dotsJson)) {
+                            // Old format: array of dots
+                            dotsData = dotsJson;
+                        } else if (dotsJson && typeof dotsJson === 'object' && dotsJson.dots && dotsJson.labels) {
+                            // New format: object with labels and dots
+                            dotsData = dotsJson.dots;
+                            loadedLabels = dotsJson.labels;
+                        } else {
+                            alert('Invalid file format');
+                            return;
+                        }
                         
                         if (!Array.isArray(dotsData)) {
                             alert('Invalid file format: expected an array of dots');
@@ -1125,7 +1261,7 @@
                         hoveredDotTileId = null;
                         tileIdCounter = 0;
                         
-                        // Extract unique labels and create them if they don't exist
+                        // Extract unique labels from dots
                         const uniqueLabels = new Set();
                         dotsData.forEach(dotData => {
                             if (dotData.label) {
@@ -1133,12 +1269,23 @@
                             }
                         });
                         
-                        // Create labels that don't exist yet
+                        // Create labels - use loaded colors if available, otherwise assign defaults
                         uniqueLabels.forEach(label => {
                             if (!labels[label]) {
-                                addLabel(label);
+                                if (loadedLabels[label]) {
+                                    // Use the color from the loaded data
+                                    labels[label] = loadedLabels[label];
+                                } else {
+                                    // Assign a default color
+                                    addLabel(label);
+                                }
                             }
                         });
+                        
+                        // Set default label if not set
+                        if (defaultLabel === null && uniqueLabels.size > 0) {
+                            defaultLabel = Array.from(uniqueLabels)[0];
+                        }
                         
                         // Create tiles and dots
                         dotsData.forEach(dotData => {
@@ -1161,6 +1308,7 @@
                             updateTileDisplay(tile.id);
                         });
                         
+                        updateLabelsList();
                         draw();
                         
                         alert(`Loaded ${dotsData.length} dots successfully!`);
