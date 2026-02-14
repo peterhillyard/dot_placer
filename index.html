@@ -1219,7 +1219,7 @@
                 const img = new Image();
                 img.onload = async () => {
                     image = img;
-                    resetView();
+                    fitToScreen();
                     draw();
                     
                     // Now process the dots data
@@ -1311,7 +1311,6 @@
                         updateLabelsList();
                         draw();
                         
-                        alert(`Loaded ${dotsData.length} dots successfully!`);
                     } catch (error) {
                         alert('Error processing dots data: ' + error.message);
                         console.error('Error loading dots:', error);
@@ -1375,9 +1374,6 @@
             // Zoom
             const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
             scale *= zoomFactor;
-
-            // Limit scale
-            scale = Math.max(0.1, Math.min(scale, 10));
 
             // Adjust offset to zoom towards mouse position
             offsetX = mouseX - imageX * scale;
@@ -1627,7 +1623,6 @@
 
                     const zoomFactor = distance / lastTouchDistance;
                     scale *= zoomFactor;
-                    scale = Math.max(0.1, Math.min(scale, 10));
 
                     offsetX = touchX - imageX * scale;
                     offsetY = touchY - imageY * scale;
