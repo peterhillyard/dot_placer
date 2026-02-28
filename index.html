@@ -518,6 +518,7 @@
                 <button id="fitBtn">Fit to Screen</button>
                 <button id="clearDotsBtn">Clear All Dots</button>
                 <button id="saveDotsBtn">Save Dots</button>
+                <button id="saveCsvBtn">Save as CSV</button>
             </div>
             
             <div id="info">
@@ -577,6 +578,7 @@
         const fitBtn = document.getElementById('fitBtn');
         const clearDotsBtn = document.getElementById('clearDotsBtn');
         const saveDotsBtn = document.getElementById('saveDotsBtn');
+        const saveCsvBtn = document.getElementById('saveCsvBtn');
         const info = document.getElementById('info');
         const newLabelInput = document.getElementById('newLabelInput');
         const addLabelBtn = document.getElementById('addLabelBtn');
@@ -1440,6 +1442,78 @@
             URL.revokeObjectURL(url);
         }
 
+        // Save dots as CSV file
+        function saveToCsv() {
+            // Collect all dots from all tiles
+            const dotsData = [];
+            tiles.forEach(tile => {
+                tile.dots.forEach(dot => {
+                    dotsData.push({
+                        x: Math.round(dot.x),
+                        y: Math.round(dot.y),
+                        label: dot.label,
+                        notes: tile.notes || '',
+                        roomNumber: tile.roomNumber || ''
+                    });
+                });
+            });
+
+            if (dotsData.length === 0) {
+                alert('No dots to save!');
+                return;
+            }
+
+            // Create CSV header
+            const headers = ['X (pixels)', 'Y (pixels)', 'Label', 'Notes', 'Room Number'];
+            const rows = [headers];
+
+            // Add data rows
+            dotsData.forEach(dot => {
+                const row = [
+                    dot.x,
+                    dot.y,
+                    dot.label,
+                    `"${dot.notes.replace(/"/g, '""')}"`, // Escape quotes in notes
+                    dot.roomNumber
+                ];
+                rows.push(row);
+            });
+
+            // Create CSV string
+            const csvString = rows.map(row => row.join(',')).join('\n');
+
+            // Create blob and download
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Prompt for filename
+            let filename = prompt('Enter a name for the CSV file:', 'dots_data');
+            if (!filename) {
+                // User cancelled
+                return;
+            }
+            
+            // Remove .csv extension if user added it
+            if (filename.toLowerCase().endsWith('.csv')) {
+                filename = filename.slice(0, -4);
+            }
+            
+            // Sanitize filename (remove invalid characters)
+            filename = filename.replace(/[^a-z0-9_\-]/gi, '_');
+            
+            if (!filename) {
+                filename = 'dots_data';
+            }
+            
+            link.download = filename + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
         // Load dots from JSON file
         async function loadDots(file) {
             if (!file) return;
@@ -2039,6 +2113,7 @@
         fitBtn.addEventListener('click', fitToScreen);
         clearDotsBtn.addEventListener('click', clearDots);
         saveDotsBtn.addEventListener('click', saveDots);
+        saveCsvBtn.addEventListener('click', saveToCsv);
 
         // Pixels per meter input
 
