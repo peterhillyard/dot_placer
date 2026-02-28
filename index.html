@@ -578,11 +578,23 @@
             const file = e.target.files[0];
             if (file) {
                 originalImageFile = file; // Store the original file
+                clearLabels(); // Clear all existing labels
+                
+                // Clear all dots and tiles
+                const tilesContainer = document.getElementById('tiles-container');
+                tilesContainer.innerHTML = '';
+                tiles = [];
+                activeTileId = null;
+                hoveredTileId = null;
+                hoveredDotTileId = null;
+                tileIdCounter = 0;
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     image = new Image();
                     image.onload = () => {
                         fitToScreen();
+                        draw();
                     };
                     image.src = event.target.result;
                 };
@@ -682,6 +694,15 @@
                 defaultLabel = labelName;
             }
             
+            updateAllTileDropdowns();
+            updateLabelsList();
+        }
+
+        // Clear all labels
+        function clearLabels() {
+            labels = {};
+            defaultLabel = null;
+            colorIndex = 0;
             updateAllTileDropdowns();
             updateLabelsList();
         }
@@ -1260,6 +1281,11 @@
                         hoveredTileId = null;
                         hoveredDotTileId = null;
                         tileIdCounter = 0;
+                        
+                        // Clear existing labels
+                        labels = {};
+                        defaultLabel = null;
+                        colorIndex = 0;
                         
                         // Extract unique labels from dots
                         const uniqueLabels = new Set();
