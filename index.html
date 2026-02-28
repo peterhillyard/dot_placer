@@ -914,13 +914,14 @@
         }
 
         // Create a new tile
-        function createTile(label = '', dot = null, notes = '') {
+        function createTile(label = '', dot = null, notes = '', roomNumber = '') {
             const tile = {
                 id: tileIdCounter++,
                 name: `Dot ${tileIdCounter}`,
                 selectedLabel: label,
                 dots: dot ? [dot] : [],
-                notes: notes
+                notes: notes,
+                roomNumber: roomNumber
             };
             
             tiles.push(tile);
@@ -939,6 +940,10 @@
                 <div class="tile-header">
                     <div class="tile-title">${tile.name}</div>
                     <button class="tile-remove" onclick="removeTile(${tile.id})">Remove</button>
+                </div>
+                <div class="control-group">
+                    <label>Room Number:</label>
+                    <input type="text" placeholder="Enter room number" value="${tile.roomNumber}" oninput="updateTileRoomNumber(${tile.id}, this.value)">
                 </div>
                 <div class="control-group">
                     <label>Label:</label>
@@ -1035,11 +1040,11 @@
             }
         }
 
-        // Remove tile
-        function updateTileNotes(tileId, notes) {
+        // Update tile room number
+        function updateTileRoomNumber(tileId, roomNumber) {
             const tile = tiles.find(t => t.id === tileId);
             if (tile) {
-                tile.notes = notes;
+                tile.roomNumber = roomNumber;
             }
         }
 
@@ -1129,7 +1134,8 @@
                     dotsData.push({
                         coordinate_pixels: [Math.round(dot.x), Math.round(dot.y)],
                         label: dot.label,
-                        notes: tile.notes || ''
+                        notes: tile.notes || '',
+                        roomNumber: tile.roomNumber || ''
                     });
                 });
             });
@@ -1330,7 +1336,7 @@
                             };
                             
                             // Create a tile for this dot
-                            const tile = createTile(dotData.label, dot, dotData.notes || '');
+                            const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '');
                             updateTileDisplay(tile.id);
                         });
                         
@@ -1359,6 +1365,7 @@
         // Make functions globally accessible
         window.updateTileLabel = updateTileLabel;
         window.updateTileNotes = updateTileNotes;
+        window.updateTileRoomNumber = updateTileRoomNumber;
         window.removeTile = removeTile;
 
         // Reset view
