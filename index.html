@@ -625,6 +625,7 @@
         let hoveredDotTileId = null; // Track which tile's dot is being hovered on canvas
         let tileIdCounter = 0;
         let labels = {}; // Object mapping label name to color
+        let visibleLabels = {}; // Object tracking which labels are visible (true/false)
         let defaultLabel = null; // The default label to use when placing dots
         let colorIndex = 0;
         let overlayDotSize = 10; // Size of dots in the overlay image
@@ -663,14 +664,19 @@
                 return null;
             }
 
-            // Check if there are any dots to overlay
+            // Check if there are any visible dots to overlay
             let totalDots = 0;
             tiles.forEach(tile => {
-                totalDots += tile.dots.length;
+                tile.dots.forEach(dot => {
+                    // Only count visible dots
+                    if (visibleLabels[dot.label] !== false) {
+                        totalDots++;
+                    }
+                });
             });
 
             if (totalDots === 0) {
-                alert('Please place some dots on the image first!');
+                alert('Please place some dots on the image first or show at least one label!');
                 return null;
             }
 
@@ -683,9 +689,14 @@
             // Draw the original image
             overlayCtx.drawImage(image, 0, 0);
 
-            // Draw all dots on the overlay
+            // Draw all visible dots on the overlay
             tiles.forEach(tile => {
                 tile.dots.forEach(dot => {
+                    // Skip hidden labels
+                    if (visibleLabels[dot.label] === false) {
+                        return;
+                    }
+                    
                     overlayCtx.fillStyle = dot.color;
                     overlayCtx.strokeStyle = '#FFFFFF';
                     overlayCtx.lineWidth = Math.max(2, size * 0.3);
@@ -769,6 +780,11 @@
                     const isHovered = tile.id === hoveredTileId || tile.id === hoveredDotTileId;
                     
                     tile.dots.forEach(dot => {
+                        // Skip drawing if this label is not visible
+                        if (visibleLabels[dot.label] === false) {
+                            return;
+                        }
+                        
                         // Draw radial distance circle if radialDistance > 0
                         if (radialDistance > 0) {
                             const radiusInPixels = radialDistance * pixelsPerMeter;
@@ -860,11 +876,14 @@
         function updateInfo() {
             const zoomPercent = Math.round(scale * 100);
             let totalDots = 0;
-            tiles.forEach(tile => totalDots += tile.dots.length);
             const dotsByLabel = {};
             tiles.forEach(tile => {
                 tile.dots.forEach(dot => {
-                    dotsByLabel[dot.label] = (dotsByLabel[dot.label] || 0) + 1;
+                    // Only count visible dots
+                    if (visibleLabels[dot.label] !== false) {
+                        totalDots++;
+                        dotsByLabel[dot.label] = (dotsByLabel[dot.label] || 0) + 1;
+                    }
                 });
             });
             
@@ -907,6 +926,7 @@
             colorIndex++;
             
             labels[labelName] = color;
+            visibleLabels[labelName] = true; // New labels are visible by default
             
             // Set as default if it's the first label
             if (defaultLabel === null) {
@@ -920,6 +940,7 @@
         // Clear all labels
         function clearLabels() {
             labels = {};
+            visibleLabels = {};
             defaultLabel = null;
             colorIndex = 0;
             updateAllTileDropdowns();
@@ -1016,8 +1037,20 @@
                     updateLabelColor(labelName, this.value);
                 });
                 
+                // Create visibility toggle button (eye icon)
+                const visibilityToggle = document.createElement('button');
+                visibilityToggle.style.cssText = 'background: none; border: none; color: #aaa; cursor: pointer; padding: 0 5px; font-size: 14px;';
+                visibilityToggle.title = 'Toggle visibility';
+                const isVisible = visibleLabels[labelName] !== false; // Default to visible
+                visibilityToggle.textContent = isVisible ? '👁️' : '🚫';
+                visibilityToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleLabelVisibility(labelName);
+                });
+                
                 labelItem.appendChild(colorDot);
                 labelItem.appendChild(labelNameDiv);
+                labelItem.appendChild(visibilityToggle);
                 labelItem.appendChild(colorPicker);
                 
                 if (labelName === defaultLabel) {
@@ -1027,9 +1060,9 @@
                     labelItem.appendChild(indicator);
                 }
                 
-                // Add click handler for setting as default (excluding color picker)
+                // Add click handler for setting as default (excluding color picker and visibility toggle)
                 labelItem.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('label-color-picker') && e.target !== labelNameDiv) {
+                    if (!e.target.classList.contains('label-color-picker') && e.target !== labelNameDiv && e.target !== visibilityToggle) {
                         setDefaultLabel(labelName);
                     }
                 });
@@ -1054,6 +1087,12 @@
             const color = labels[oldName];
             delete labels[oldName];
             labels[newName] = color;
+            
+            // Update visibility tracking
+            if (visibleLabels[oldName] !== undefined) {
+                visibleLabels[newName] = visibleLabels[oldName];
+                delete visibleLabels[oldName];
+            }
             
             // Update default label if it was the renamed one
             if (defaultLabel === oldName) {
@@ -1103,10 +1142,20 @@
             }
         }
 
+        // Toggle label visibility
+        function toggleLabelVisibility(labelName) {
+            if (labels[labelName] !== undefined) {
+                visibleLabels[labelName] = !visibleLabels[labelName];
+                updateLabelsList();
+                draw();
+            }
+        }
+
         // Make functions globally accessible
         window.setDefaultLabel = setDefaultLabel;
         window.updateLabelColor = updateLabelColor;
         window.renameLabel = renameLabel;
+        window.toggleLabelVisibility = toggleLabelVisibility;
 
         // Update all tile label dropdowns
         function updateAllTileDropdowns() {
@@ -1367,9 +1416,10 @@
                 });
             });
 
-            // Create JSON object with labels, pixels per meter, and their colors
+            // Create JSON object with labels, pixels per meter, visibility state, and their colors
             const jsonData = {
                 labels: labels,
+                visibleLabels: visibleLabels,
                 pixelsPerMeter: pixelsPerMeter,
                 dots: dotsData
             };
@@ -1444,22 +1494,25 @@
 
         // Save dots as CSV file
         function saveToCsv() {
-            // Collect all dots from all tiles
+            // Collect all visible dots from all tiles
             const dotsData = [];
             tiles.forEach(tile => {
                 tile.dots.forEach(dot => {
-                    dotsData.push({
-                        x: Math.round(dot.x),
-                        y: Math.round(dot.y),
-                        label: dot.label,
-                        notes: tile.notes || '',
-                        roomNumber: tile.roomNumber || ''
-                    });
+                    // Only include visible dots
+                    if (visibleLabels[dot.label] !== false) {
+                        dotsData.push({
+                            x: Math.round(dot.x),
+                            y: Math.round(dot.y),
+                            label: dot.label,
+                            notes: tile.notes || '',
+                            roomNumber: tile.roomNumber || ''
+                        });
+                    }
                 });
             });
 
             if (dotsData.length === 0) {
-                alert('No dots to save!');
+                alert('No visible dots to save!');
                 return;
             }
 
@@ -1557,6 +1610,7 @@
                         // Handle both old format (array) and new format (object with labels and dots)
                         let dotsData;
                         let loadedLabels = {};
+                        let loadedVisibleLabels = {};
                         let loadedPixelsPerMeter = 1; // Default to 1 if not provided
                         
                         if (Array.isArray(dotsJson)) {
@@ -1569,6 +1623,10 @@
                             // Load pixelsPerMeter if present, otherwise default to 1
                             if (dotsJson.pixelsPerMeter !== undefined) {
                                 loadedPixelsPerMeter = dotsJson.pixelsPerMeter;
+                            }
+                            // Load visibility state if present
+                            if (dotsJson.visibleLabels !== undefined) {
+                                loadedVisibleLabels = dotsJson.visibleLabels;
                             }
                         } else {
                             alert('Invalid file format');
@@ -1595,6 +1653,7 @@
                         
                         // Clear existing labels
                         labels = {};
+                        visibleLabels = {};
                         defaultLabel = null;
                         colorIndex = 0;
                         
@@ -1616,10 +1675,18 @@
                                 if (loadedLabels[label]) {
                                     // Use the color from the loaded data
                                     labels[label] = loadedLabels[label];
+                                    visibleLabels[label] = true; // Initialize visibility
                                 } else {
                                     // Assign a default color
                                     addLabel(label);
                                 }
+                            }
+                        });
+                        
+                        // Restore visibility state if it was saved
+                        Object.keys(loadedVisibleLabels).forEach(label => {
+                            if (labels[label] !== undefined) {
+                                visibleLabels[label] = loadedVisibleLabels[label];
                             }
                         });
                         
