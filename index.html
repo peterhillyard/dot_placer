@@ -538,6 +538,11 @@
             </div>
 
             <div class="control-group">
+                <label>Load JSON Only:</label>
+                <input type="file" id="loadJsonFromZipInput" accept=".zip,application/zip">
+            </div>
+
+            <div class="control-group">
                 <label>Pixels Per Meter:</label>
                 <div style="display: flex; gap: 5px; align-items: center;">
                     <button id="calibrateBtn" style="flex: 1; margin: 0;">Calibrate</button>
@@ -662,6 +667,7 @@
         const container = document.getElementById('canvas-container');
         const fileInput = document.getElementById('fileInput');
         const loadDotsInput = document.getElementById('loadDotsInput');
+        const loadJsonFromZipInput = document.getElementById('loadJsonFromZipInput');
         const resetBtn = document.getElementById('resetBtn');
         const fitBtn = document.getElementById('fitBtn');
         const clearDotsBtn = document.getElementById('clearDotsBtn');
@@ -853,6 +859,16 @@
             const file = e.target.files[0];
             if (file) {
                 loadDots(file);
+                // Clear the input so the same file can be loaded again
+                e.target.value = '';
+            }
+        });
+
+        // Load JSON only from ZIP (without replacing the image)
+        loadJsonFromZipInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadJsonFromZip(file);
                 // Clear the input so the same file can be loaded again
                 e.target.value = '';
             }
@@ -1712,6 +1728,182 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+        }
+
+        // Load JSON only from ZIP file (keeps existing image)
+        async function loadJsonFromZip(file) {
+            if (!image) {
+                alert('Please load an image first before loading JSON data');
+                return;
+            }
+            
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip library not loaded. Please refresh the page.');
+                return;
+            }
+            
+            try {
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+                
+                // Check for required JSON file
+                if (!zipContent.files['dots_data.json']) {
+                    alert('Error: dots_data.json not found in zip file');
+                    return;
+                }
+                
+                // Process the dots data
+                try {
+                    const dotsJsonText = await zipContent.files['dots_data.json'].async('text');
+                    const dotsJson = JSON.parse(dotsJsonText);
+                    
+                    // Handle both old format (array) and new format (object with labels and dots)
+                    let dotsData;
+                    let loadedLabels = {};
+                    let loadedVisibleLabels = {};
+                    let loadedPixelsPerMeter = 1; // Default to 1 if not provided
+                    
+                    if (Array.isArray(dotsJson)) {
+                        // Old format: array of dots
+                        dotsData = dotsJson;
+                    } else if (dotsJson && typeof dotsJson === 'object' && dotsJson.dots && dotsJson.labels) {
+                        // New format: object with labels, pixelsPerMeter, and dots
+                        dotsData = dotsJson.dots;
+                        loadedLabels = dotsJson.labels;
+                        // Load pixelsPerMeter if present, otherwise default to 1
+                        if (dotsJson.pixelsPerMeter !== undefined) {
+                            loadedPixelsPerMeter = dotsJson.pixelsPerMeter;
+                        }
+                        // Load visibility state if present
+                        if (dotsJson.visibleLabels !== undefined) {
+                            loadedVisibleLabels = dotsJson.visibleLabels;
+                        }
+                    } else {
+                        alert('Invalid file format');
+                        return;
+                    }
+                    
+                    if (!Array.isArray(dotsData)) {
+                        alert('Invalid file format: expected an array of dots');
+                        return;
+                    }
+                    
+                    // Clear existing tiles and dots
+                    tiles.forEach(tile => {
+                        const tileDiv = document.querySelector(`[data-tile-id="${tile.id}"]`);
+                        if (tileDiv) {
+                            tileDiv.remove();
+                        }
+                    });
+                    tiles = [];
+                    activeTileId = null;
+                    hoveredTileId = null;
+                    hoveredDotTileId = null;
+                    tileIdCounter = 0;
+                    
+                    // Preserve default labels, clear only the others
+                    const preservedDefaults = { ...labels };
+                    const preservedDefaultVisibility = { ...visibleLabels };
+                    labels = {};
+                    visibleLabels = {};
+                    defaultLabel = null;
+                    colorIndex = 0;
+                    
+                    // Always restore default labels
+                    const defaultLabelsConfig = {
+                        'A': '#0000FF',      // blue
+                        'L': '#00FF00',      // green
+                        'GW': '#800080',     // purple
+                        'S': '#FF13F0',      // pink
+                        'HB': '#FF0000'      // red
+                    };
+                    
+                    Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
+                        const color = defaultLabelsConfig[labelName];
+                        labels[labelName] = color;
+                        visibleLabels[labelName] = true;
+                        if (index === 0) {
+                            defaultLabel = labelName;
+                        }
+                    });
+                    
+                    // Set the pixels per meter value
+                    pixelsPerMeter = loadedPixelsPerMeter;
+                    pixelsPerMeterInput.value = pixelsPerMeter;
+                    
+                    // Extract unique labels from dots
+                    const uniqueLabels = new Set();
+                    dotsData.forEach(dotData => {
+                        if (dotData.label) {
+                            uniqueLabels.add(dotData.label);
+                        }
+                    });
+                    
+                    // Create labels - use loaded colors if available, otherwise assign defaults
+                    // Skip labels that are already in the default set
+                    uniqueLabels.forEach(label => {
+                        if (!labels[label]) {
+                            if (loadedLabels[label]) {
+                                // Use the color from the loaded data
+                                labels[label] = loadedLabels[label];
+                                visibleLabels[label] = true; // Initialize visibility
+                            } else {
+                                // Assign a default color
+                                addLabel(label);
+                            }
+                        }
+                    });
+                    
+                    // Restore visibility state if it was saved
+                    Object.keys(loadedVisibleLabels).forEach(label => {
+                        if (labels[label] !== undefined) {
+                            // Only update visibility for non-default labels
+                            if (!preservedDefaults[label]) {
+                                visibleLabels[label] = loadedVisibleLabels[label];
+                            }
+                        }
+                    });
+                    
+                    // Set default label if not set
+                    if (defaultLabel === null && uniqueLabels.size > 0) {
+                        defaultLabel = Array.from(uniqueLabels)[0];
+                    }
+                    
+                    // Create tiles and dots
+                    dotsData.forEach(dotData => {
+                        if (!dotData.coordinate_pixels || !Array.isArray(dotData.coordinate_pixels) || 
+                            dotData.coordinate_pixels.length !== 2 || !dotData.label) {
+                            console.warn('Skipping invalid dot data:', dotData);
+                            return;
+                        }
+                        
+                        const [x, y] = dotData.coordinate_pixels;
+                        const dot = {
+                            x: x,
+                            y: y,
+                            label: dotData.label,
+                            color: labels[dotData.label] || '#FFFFFF'
+                        };
+                        
+                        // Create a tile for this dot
+                        const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '');
+                        updateTileDisplay(tile.id);
+                    });
+                    
+                    updateAllTileDropdowns();
+                    updateLabelsList();
+                    draw();
+                    alert('JSON data loaded successfully!');
+                    
+                } catch (error) {
+                    alert('Error processing dots data: ' + error.message);
+                    console.error('Error loading dots:', error);
+                }
+                
+            } catch (error) {
+                alert('Error reading zip file: ' + error.message);
+                console.error('Error loading zip:', error);
+            }
         }
 
         // Load dots from JSON file
