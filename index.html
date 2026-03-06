@@ -358,6 +358,80 @@
             background-color: #555;
         }
 
+        #merge-labels-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2001;
+            pointer-events: auto;
+        }
+
+        #merge-labels-modal.show {
+            display: block;
+        }
+
+        #merge-labels-content {
+            background-color: #1a1a1a;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 400px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        #merge-labels-content h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .merge-label-group {
+            margin-bottom: 15px;
+        }
+
+        .merge-label-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .merge-label-group select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        #mergeLabelsBtn, #mergeLabelsCancelBtn {
+            padding: 8px 15px;
+            border-radius: 3px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        #mergeLabelsCancelBtn {
+            background-color: #666;
+        }
+
+        #mergeLabelsBtn:hover {
+            background-color: #45a049;
+        }
+
+        #mergeLabelsCancelBtn:hover {
+            background-color: #555;
+        }
+
         #preview-modal {
             display: none;
             position: fixed;
@@ -516,6 +590,7 @@
             <div class="control-group">
                 <button id="resetBtn">Reset View</button>
                 <button id="fitBtn">Fit to Screen</button>
+                <button id="mergeLabelsOpenBtn">Merge Labels</button>
                 <button id="clearDotsBtn">Clear All Dots</button>
                 <button id="saveDotsBtn">Save Dots</button>
                 <button id="saveCsvBtn">Save as CSV</button>
@@ -561,6 +636,28 @@
         </div>
     </div>
 
+    <div id="merge-labels-modal">
+        <div id="merge-labels-content">
+            <h2>Merge Labels</h2>
+            <div class="merge-label-group">
+                <label>From Label:</label>
+                <select id="mergeFromLabel">
+                    <option value="">Select a label</option>
+                </select>
+            </div>
+            <div class="merge-label-group">
+                <label>To Label:</label>
+                <select id="mergeToLabel">
+                    <option value="">Select a label</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="mergeLabelsBtn">Merge</button>
+                <button id="mergeLabelsCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="preview-modal">
         <button id="preview-close">&times;</button>
         <img id="preview-content" alt="Overlay Preview">
@@ -600,6 +697,12 @@
         const calibrationCalculateBtn = document.getElementById('calibrationCalculateBtn');
         const calibrationCancelBtn = document.getElementById('calibrationCancelBtn');
         const calibrationStatus = document.getElementById('calibration-status');
+        const mergeLabelsOpenBtn = document.getElementById('mergeLabelsOpenBtn');
+        const mergeLabelsModal = document.getElementById('merge-labels-modal');
+        const mergeFromLabel = document.getElementById('mergeFromLabel');
+        const mergeToLabel = document.getElementById('mergeToLabel');
+        const mergeLabelsBtn = document.getElementById('mergeLabelsBtn');
+        const mergeLabelsCancelBtn = document.getElementById('mergeLabelsCancelBtn');
 
         let image = null;
         let originalImageFile = null; // Store the original image file
@@ -1651,7 +1754,9 @@
                         hoveredDotTileId = null;
                         tileIdCounter = 0;
                         
-                        // Clear existing labels
+                        // Preserve default labels, clear only the others
+                        const preservedDefaults = { ...labels };
+                        const preservedDefaultVisibility = { ...visibleLabels };
                         labels = {};
                         visibleLabels = {};
                         defaultLabel = null;
@@ -1660,6 +1765,15 @@
                         // Set the pixels per meter value
                         pixelsPerMeter = loadedPixelsPerMeter;
                         pixelsPerMeterInput.value = pixelsPerMeter;
+                        
+                        // Restore default labels
+                        Object.keys(preservedDefaults).forEach((labelName, index) => {
+                            labels[labelName] = preservedDefaults[labelName];
+                            visibleLabels[labelName] = preservedDefaultVisibility[labelName] !== false;
+                            if (defaultLabel === null) {
+                                defaultLabel = labelName;
+                            }
+                        });
                         
                         // Extract unique labels from dots
                         const uniqueLabels = new Set();
@@ -1670,6 +1784,7 @@
                         });
                         
                         // Create labels - use loaded colors if available, otherwise assign defaults
+                        // Skip labels that are already in the default set
                         uniqueLabels.forEach(label => {
                             if (!labels[label]) {
                                 if (loadedLabels[label]) {
@@ -1686,7 +1801,10 @@
                         // Restore visibility state if it was saved
                         Object.keys(loadedVisibleLabels).forEach(label => {
                             if (labels[label] !== undefined) {
-                                visibleLabels[label] = loadedVisibleLabels[label];
+                                // Only update visibility for non-default labels
+                                if (!preservedDefaults[label]) {
+                                    visibleLabels[label] = loadedVisibleLabels[label];
+                                }
                             }
                         });
                         
@@ -2320,11 +2438,111 @@
             }
         });
 
+        // Merge labels button
+        mergeLabelsOpenBtn.addEventListener('click', () => {
+            // Populate the dropdowns with available labels
+            mergeFromLabel.innerHTML = '<option value="">Select a label</option>';
+            mergeToLabel.innerHTML = '<option value="">Select a label</option>';
+            
+            Object.keys(labels).forEach(label => {
+                const option1 = document.createElement('option');
+                option1.value = label;
+                option1.textContent = label;
+                mergeFromLabel.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = label;
+                option2.textContent = label;
+                mergeToLabel.appendChild(option2);
+            });
+            
+            mergeLabelsModal.classList.add('show');
+        });
+
+        // Merge labels cancel button
+        mergeLabelsCancelBtn.addEventListener('click', () => {
+            mergeLabelsModal.classList.remove('show');
+        });
+
+        // Merge labels button
+        mergeLabelsBtn.addEventListener('click', () => {
+            const fromLabel = mergeFromLabel.value;
+            const toLabel = mergeToLabel.value;
+            
+            if (!fromLabel || !toLabel) {
+                alert('Please select both a source and a target label');
+                return;
+            }
+            
+            if (fromLabel === toLabel) {
+                alert('Source and target labels must be different');
+                return;
+            }
+            
+            if (!labels[toLabel]) {
+                alert('Target label does not exist');
+                return;
+            }
+            
+            // Perform the merge
+            const targetColor = labels[toLabel];
+            let convertedCount = 0;
+            
+            // Update all dots with the source label to the target label
+            tiles.forEach(tile => {
+                // Update tile's selectedLabel if it matches the source label
+                if (tile.selectedLabel === fromLabel) {
+                    tile.selectedLabel = toLabel;
+                }
+                
+                tile.dots.forEach(dot => {
+                    if (dot.label === fromLabel) {
+                        dot.label = toLabel;
+                        dot.color = targetColor;
+                        convertedCount++;
+                    }
+                });
+                updateTileDisplay(tile.id);
+            });
+            
+            // Update all tile dropdowns to reflect the label change
+            updateAllTileDropdowns();
+            
+            // Close the modal
+            mergeLabelsModal.classList.remove('show');
+            
+            // Redraw the canvas
+            draw();
+            
+            alert(`Successfully converted ${convertedCount} dot(s) from "${fromLabel}" to "${toLabel}"`);
+        });
+
         // Window resize
         window.addEventListener('resize', resizeCanvas);
 
         // Initialize
         resizeCanvas();
+
+        // Add default labels with specified colors
+        const defaultLabelsConfig = {
+            'A': '#0000FF',      // blue
+            'L': '#00FF00',      // green
+            'GW': '#800080',     // purple
+            'S': '#FF13F0',      // pink
+            'HB': '#FF0000'      // red
+        };
+
+        Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
+            const color = defaultLabelsConfig[labelName];
+            labels[labelName] = color;
+            visibleLabels[labelName] = true;
+            if (index === 0) {
+                defaultLabel = labelName;
+            }
+        });
+
+        updateAllTileDropdowns();
+        updateLabelsList();
     </script>
 </body>
 </html>
