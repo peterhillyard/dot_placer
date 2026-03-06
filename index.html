@@ -545,30 +545,21 @@
                 </div>
             </div>
 
-            <div class="control-group">
-                <label>Radial Distance:</label>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    <input type="number" id="radialDistanceInput" min="0" step="0.1" value="0" style="flex: 1;">
-                    <select id="radialDistanceUnitInput" style="padding: 5px; border-radius: 3px; border: 1px solid #555; background-color: #444; color: #fff; font-size: 12px;">
-                        <option value="m">Meters</option>
-                        <option value="cm">Centimeters</option>
-                        <option value="in">Inches</option>
-                        <option value="ft">Feet</option>
-                        <option value="yd">Yards</option>
-                    </select>
-                </div>
-            </div>
 
-            <div class="control-group">
-                <label>Radial Circle Color:</label>
-                <input type="color" id="radialCircleColorInput" value="#FFFF00">
-            </div>
 
             <div class="control-group">
                 <label>Overlay Dot Size (pixels):</label>
                 <div class="dot-size-control">
                     <input type="number" id="dotSizeInput" min="1" max="100" step="0.5" value="10">
                     <button id="previewOverlayBtn">Preview</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Circle Opacity:</label>
+                <div class="dot-size-control">
+                    <input type="range" id="circleOpacityInput" min="0" max="1" step="0.05" value="0.5" style="flex: 1;">
+                    <span id="opacityValue" style="width: 40px; text-align: right;">50%</span>
                 </div>
             </div>
 
@@ -683,13 +674,13 @@
         const tilesContainer = document.getElementById('tiles-container');
         const dotSizeInput = document.getElementById('dotSizeInput');
         const previewOverlayBtn = document.getElementById('previewOverlayBtn');
+        const circleOpacityInput = document.getElementById('circleOpacityInput');
+        const opacityValue = document.getElementById('opacityValue');
         const previewModal = document.getElementById('preview-modal');
         const previewContent = document.getElementById('preview-content');
         const previewClose = document.getElementById('preview-close');
         const pixelsPerMeterInput = document.getElementById('pixelsPerMeterInput');
-        const radialDistanceInput = document.getElementById('radialDistanceInput');
-        const radialDistanceUnitInput = document.getElementById('radialDistanceUnitInput');
-        const radialCircleColorInput = document.getElementById('radialCircleColorInput');
+
         const calibrateBtn = document.getElementById('calibrateBtn');
         const calibrationModal = document.getElementById('calibration-modal');
         const calibrationDistanceInput = document.getElementById('calibrationDistanceInput');
@@ -733,9 +724,8 @@
         let colorIndex = 0;
         let overlayDotSize = 10; // Size of dots in the overlay image
         let pixelsPerMeter = 1; // Pixels per meter value
-        let radialDistance = 0; // Radial distance in meters
-        let radialDistanceUnit = 'm'; // Unit for radial distance display
-        let radialCircleColor = '#FFFF00'; // Color of the radial distance circle
+        let labelRadialDistances = {}; // Object tracking radial distance per label
+        let circleOpacity = 0.5; // Opacity level for circles around dots
         const colors = [
             '#FF0000', // red
             '#00FF00', // green
@@ -888,11 +878,12 @@
                             return;
                         }
                         
-                        // Draw radial distance circle if radialDistance > 0
+                        // Draw radial distance circle if label has a radial distance set
+                        const radialDistance = labelRadialDistances[dot.label] || 0;
                         if (radialDistance > 0) {
                             const radiusInPixels = radialDistance * pixelsPerMeter;
-                            const circleColor = hexToRgba(radialCircleColor, 0.1);
-                            const strokeColor = hexToRgba(radialCircleColor, 0.15);
+                            const circleColor = hexToRgba('#000000', circleOpacity);
+                            const strokeColor = hexToRgba('#000000', circleOpacity * 0.3);
                             ctx.fillStyle = circleColor;
                             ctx.strokeStyle = strokeColor;
                             ctx.lineWidth = 1 / scale;
@@ -1044,6 +1035,7 @@
         function clearLabels() {
             labels = {};
             visibleLabels = {};
+            labelRadialDistances = {};
             defaultLabel = null;
             colorIndex = 0;
             updateAllTileDropdowns();
@@ -1062,6 +1054,10 @@
             
             labelsContainer.innerHTML = '';
             labelKeys.forEach(labelName => {
+                // Create label item wrapper
+                const labelItemWrapper = document.createElement('div');
+                labelItemWrapper.style.marginBottom = '10px';
+                
                 const labelItem = document.createElement('div');
                 labelItem.className = 'label-item';
                 if (labelName === defaultLabel) {
@@ -1170,7 +1166,49 @@
                     }
                 });
                 labelItem.title = 'Click to set as default, double-click name to edit';
-                labelsContainer.appendChild(labelItem);
+                labelItemWrapper.appendChild(labelItem);
+                
+                // Create radial distance control for this label
+                const radialDistanceControl = document.createElement('div');
+                radialDistanceControl.style.cssText = 'display: flex; gap: 5px; align-items: center; margin-top: 5px; padding: 0 0 0 0;';
+                
+                const radialLabel = document.createElement('label');
+                radialLabel.textContent = 'Radius:';
+                radialLabel.style.cssText = 'font-size: 11px; color: #aaa; width: 50px; margin: 0;';
+                
+                const radialInput = document.createElement('input');
+                radialInput.type = 'number';
+                radialInput.min = '0';
+                radialInput.step = '0.1';
+                radialInput.value = labelRadialDistances[labelName] ? (labelRadialDistances[labelName] / 1).toFixed(2) : '0';  // Assuming stored in meters
+                radialInput.style.cssText = 'width: 60px; padding: 3px; border-radius: 3px; border: 1px solid #555; background-color: #444; color: #fff; font-size: 11px;';
+                
+                const radialUnit = document.createElement('select');
+                radialUnit.style.cssText = 'width: 70px; padding: 3px; border-radius: 3px; border: 1px solid #555; background-color: #444; color: #fff; font-size: 11px;';
+                radialUnit.innerHTML = '<option value="m">Meters</option><option value="cm">Centimeters</option><option value="in">Inches</option><option value="ft">Feet</option><option value="yd">Yards</option>';
+                radialUnit.value = 'm';
+                
+                // Event listeners for radial distance input
+                const updateRadialDistance = () => {
+                    const value = parseFloat(radialInput.value);
+                    if (!isNaN(value) && value >= 0) {
+                        const unit = radialUnit.value;
+                        labelRadialDistances[labelName] = convertToMeters(value, unit);
+                        draw();
+                    }
+                };
+                
+                radialInput.addEventListener('input', updateRadialDistance);
+                radialUnit.addEventListener('change', () => {
+                    updateRadialDistance();
+                });
+                
+                radialDistanceControl.appendChild(radialLabel);
+                radialDistanceControl.appendChild(radialInput);
+                radialDistanceControl.appendChild(radialUnit);
+                labelItemWrapper.appendChild(radialDistanceControl);
+                
+                labelsContainer.appendChild(labelItemWrapper);
             });
         }
 
@@ -1195,6 +1233,12 @@
             if (visibleLabels[oldName] !== undefined) {
                 visibleLabels[newName] = visibleLabels[oldName];
                 delete visibleLabels[oldName];
+            }
+            
+            // Update radial distance tracking
+            if (labelRadialDistances[oldName] !== undefined) {
+                labelRadialDistances[newName] = labelRadialDistances[oldName];
+                delete labelRadialDistances[oldName];
             }
             
             // Update default label if it was the renamed one
@@ -2302,31 +2346,7 @@
 
         // Pixels per meter input
 
-        // Radial distance input
-        radialDistanceInput.addEventListener('input', (e) => {
-            const value = parseFloat(e.target.value);
-            if (!isNaN(value) && value >= 0) {
-                const unit = radialDistanceUnitInput.value;
-                radialDistance = convertToMeters(value, unit);
-                draw();
-            }
-        });
 
-        // Radial distance unit change
-        radialDistanceUnitInput.addEventListener('change', (e) => {
-            const value = parseFloat(radialDistanceInput.value);
-            if (!isNaN(value) && value >= 0) {
-                const unit = e.target.value;
-                radialDistance = convertToMeters(value, unit);
-                draw();
-            }
-        });
-
-        // Radial circle color input
-        radialCircleColorInput.addEventListener('input', (e) => {
-            radialCircleColor = e.target.value;
-            draw();
-        });
 
         // Calibrate button
         calibrateBtn.addEventListener('click', () => {
@@ -2429,6 +2449,13 @@
 
         // Preview overlay button
         previewOverlayBtn.addEventListener('click', showOverlayPreview);
+
+        // Circle opacity input
+        circleOpacityInput.addEventListener('input', (e) => {
+            circleOpacity = parseFloat(e.target.value);
+            opacityValue.textContent = Math.round(circleOpacity * 100) + '%';
+            draw();
+        });
 
         // Close preview modal
         previewClose.addEventListener('click', closePreview);
