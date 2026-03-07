@@ -742,6 +742,14 @@
             '#800080'  // purple
         ];
 
+        const defaultLabelsConfig = {
+            'A': '#0000FF',      // blue
+            'L': '#00FF00',      // green
+            'GW': '#800080',     // purple
+            'S': '#FF13F0',      // pink
+            'HB': '#FF0000'      // red
+        };
+
         // Set canvas size to main area size
         function resizeCanvas() {
             const mainArea = document.getElementById('main-area');
@@ -831,6 +839,7 @@
             if (file) {
                 originalImageFile = file; // Store the original file
                 clearLabels(); // Clear all existing labels
+                initializeDefaultLabels();
                 
                 // Clear all dots and tiles
                 const tilesContainer = document.getElementById('tiles-container');
@@ -1054,6 +1063,20 @@
             labelRadialDistances = {};
             defaultLabel = null;
             colorIndex = 0;
+            updateAllTileDropdowns();
+            updateLabelsList();
+        }
+
+        // Restore the built-in default labels and visibility.
+        function initializeDefaultLabels() {
+            Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
+                labels[labelName] = defaultLabelsConfig[labelName];
+                visibleLabels[labelName] = true;
+                if (index === 0) {
+                    defaultLabel = labelName;
+                }
+            });
+
             updateAllTileDropdowns();
             updateLabelsList();
         }
@@ -1801,31 +1824,13 @@
                     hoveredDotTileId = null;
                     tileIdCounter = 0;
                     
-                    // Preserve default labels, clear only the others
-                    const preservedDefaults = { ...labels };
-                    const preservedDefaultVisibility = { ...visibleLabels };
+                    // Clear labels and restore the built-in defaults.
                     labels = {};
                     visibleLabels = {};
                     defaultLabel = null;
                     colorIndex = 0;
                     
-                    // Always restore default labels
-                    const defaultLabelsConfig = {
-                        'A': '#0000FF',      // blue
-                        'L': '#00FF00',      // green
-                        'GW': '#800080',     // purple
-                        'S': '#FF13F0',      // pink
-                        'HB': '#FF0000'      // red
-                    };
-                    
-                    Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
-                        const color = defaultLabelsConfig[labelName];
-                        labels[labelName] = color;
-                        visibleLabels[labelName] = true;
-                        if (index === 0) {
-                            defaultLabel = labelName;
-                        }
-                    });
+                    initializeDefaultLabels();
                     
                     // Set the pixels per meter value
                     pixelsPerMeter = loadedPixelsPerMeter;
@@ -1858,7 +1863,7 @@
                     Object.keys(loadedVisibleLabels).forEach(label => {
                         if (labels[label] !== undefined) {
                             // Only update visibility for non-default labels
-                            if (!preservedDefaults[label]) {
+                            if (!defaultLabelsConfig[label]) {
                                 visibleLabels[label] = loadedVisibleLabels[label];
                             }
                         }
@@ -2038,7 +2043,7 @@
                         Object.keys(loadedVisibleLabels).forEach(label => {
                             if (labels[label] !== undefined) {
                                 // Only update visibility for non-default labels
-                                if (!preservedDefaults[label]) {
+                                if (!defaultLabelsConfig[label]) {
                                     visibleLabels[label] = loadedVisibleLabels[label];
                                 }
                             }
@@ -2741,27 +2746,7 @@
 
         // Initialize
         resizeCanvas();
-
-        // Add default labels with specified colors
-        const defaultLabelsConfig = {
-            'A': '#0000FF',      // blue
-            'L': '#00FF00',      // green
-            'GW': '#800080',     // purple
-            'S': '#FF13F0',      // pink
-            'HB': '#FF0000'      // red
-        };
-
-        Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
-            const color = defaultLabelsConfig[labelName];
-            labels[labelName] = color;
-            visibleLabels[labelName] = true;
-            if (index === 0) {
-                defaultLabel = labelName;
-            }
-        });
-
-        updateAllTileDropdowns();
-        updateLabelsList();
+        initializeDefaultLabels();
     </script>
 </body>
 </html>
