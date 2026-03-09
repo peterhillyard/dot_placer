@@ -751,6 +751,12 @@
             'HB': '#FF0000'      // red
         };
 
+        const defaultLabelRadialDistances = {
+            'A': 10,      // 10 meters
+            'L': 12,      // 12 meters
+            'GW': 45      // 45 meters
+        };
+
         // Set canvas size to main area size
         function resizeCanvas() {
             const mainArea = document.getElementById('main-area');
@@ -1073,6 +1079,9 @@
             Object.keys(defaultLabelsConfig).forEach((labelName, index) => {
                 labels[labelName] = defaultLabelsConfig[labelName];
                 visibleLabels[labelName] = true;
+                if (defaultLabelRadialDistances[labelName] !== undefined) {
+                    labelRadialDistances[labelName] = defaultLabelRadialDistances[labelName];
+                }
                 if (index === 0) {
                     defaultLabel = labelName;
                 }
