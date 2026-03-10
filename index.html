@@ -1635,9 +1635,9 @@
             // Create zip file
             const zip = new JSZip();
 
-            // Add original image
+            // Add original image (always as .jpg for consistency)
             if (originalImageFile) {
-                zip.file('original_image.' + originalImageFile.name.split('.').pop(), originalImageFile);
+                zip.file('original_image.jpg', originalImageFile);
             } else {
                 // Fallback: convert current image to blob
                 const originalBlob = await new Promise(resolve => {
@@ -1940,13 +1940,23 @@
                     return;
                 }
                 
-                if (!zipContent.files['original_image.jpg']) {
-                    alert('Error: original_image.jpg not found in zip file');
+                // Find original image file (support .jpg, .jpeg, .JPG, .JPEG for backward compatibility)
+                let imageFile = null;
+                const imageExtensions = ['original_image.jpg', 'original_image.jpeg', 'original_image.JPG', 'original_image.JPEG'];
+                for (const ext of imageExtensions) {
+                    if (zipContent.files[ext]) {
+                        imageFile = zipContent.files[ext];
+                        break;
+                    }
+                }
+                
+                if (!imageFile) {
+                    alert('Error: original image file not found in zip file (expected original_image.jpg, .jpeg, .JPG, or .JPEG)');
                     return;
                 }
                 
                 // Load the original image first
-                const imageBlob = await zipContent.files['original_image.jpg'].async('blob');
+                const imageBlob = await imageFile.async('blob');
                 const imageUrl = URL.createObjectURL(imageBlob);
                 
                 // Load the image
