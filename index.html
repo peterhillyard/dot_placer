@@ -624,6 +624,86 @@
             min-height: 20px;
         }
 
+        #audit-rooms-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2001;
+            pointer-events: auto;
+        }
+
+        #audit-rooms-modal.show {
+            display: block;
+        }
+
+        #audit-rooms-content {
+            background-color: #1a1a1a;
+            border: 2px solid #FF9800;
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 500px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        #audit-rooms-content h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #FF9800;
+        }
+
+        .audit-section {
+            margin-bottom: 20px;
+        }
+
+        .audit-section h3 {
+            margin: 10px 0 10px 0;
+            font-size: 14px;
+            color: #FF9800;
+        }
+
+        .audit-list {
+            background-color: #2c2c2c;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+            color: #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .audit-list-item {
+            padding: 5px;
+            margin-bottom: 5px;
+            background-color: #333;
+            border-radius: 3px;
+            word-break: break-word;
+        }
+
+        .audit-empty {
+            color: #4CAF50;
+            font-style: italic;
+        }
+
+        .audit-warning {
+            color: #FF9800;
+            font-weight: bold;
+        }
+
+        #auditRoomsCloseBtn {
+            margin-top: 15px;
+            background-color: #666;
+        }
+
+        #auditRoomsCloseBtn:hover {
+            background-color: #555;
+        }
+
         #preview-modal {
             display: none;
             position: fixed;
@@ -727,6 +807,13 @@
             </div>
 
             <div class="control-group">
+                <label>Floor Filter:</label>
+                <select id="floorFilterSelect" disabled>
+                    <option value="">-- All Floors --</option>
+                </select>
+            </div>
+
+            <div class="control-group">
                 <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png">
             </div>
             
@@ -784,6 +871,7 @@
             <div class="control-group">
                 <button id="resetBtn">Reset View</button>
                 <button id="fitBtn">Fit to Screen</button>
+                <button id="auditRoomsBtn">Audit Rooms</button>
                 <button id="mergeLabelsOpenBtn">Merge Labels</button>
                 <button id="clearDotsBtn">Clear All Dots</button>
                 <button id="saveDotsBtn">Save Dots</button>
@@ -900,6 +988,35 @@
         </div>
     </div>
 
+    <div id="audit-rooms-modal">
+        <div id="audit-rooms-content">
+            <h2>Room Domain ID Audit</h2>
+            
+            <div class="audit-section">
+                <h3>Unused Rooms (in data but not in tiles)</h3>
+                <div id="audit-unused-list" class="audit-list">
+                    <div class="audit-empty">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="audit-section">
+                <h3>Duplicated Room IDs (in tiles)</h3>
+                <div id="audit-duplicates-list" class="audit-list">
+                    <div class="audit-empty">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="audit-section">
+                <h3>Dots without Room Domain ID</h3>
+                <div id="audit-no-roomid-list" class="audit-list">
+                    <div class="audit-empty">Loading...</div>
+                </div>
+            </div>
+            
+            <button id="auditRoomsCloseBtn">Close</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         const canvas = document.getElementById('canvas');
@@ -957,11 +1074,23 @@
         const fetchRoomsBtn = document.getElementById('fetchRoomsBtn');
         const fetchRoomsCancelBtn = document.getElementById('fetchRoomsCancelBtn');
         const fetchRoomsStatus = document.getElementById('fetch-rooms-status');
+        const floorFilterSelect = document.getElementById('floorFilterSelect');
+
+        const auditRoomsBtn = document.getElementById('auditRoomsBtn');
+        const auditRoomsModal = document.getElementById('audit-rooms-modal');
+        const auditUnusedList = document.getElementById('audit-unused-list');
+        const auditDuplicatesList = document.getElementById('audit-duplicates-list');
+        const auditNoRoomIdList = document.getElementById('audit-no-roomid-list');
+        const auditRoomsCloseBtn = document.getElementById('auditRoomsCloseBtn');
 
         // Store fetched organizations data
         let organizationsData = null;
         // Store fetched rooms data
         let roomsData = null;
+        // Store selected building for filtering
+        let selectedBuilding = null;
+        // Store selected floor for filtering
+        let selectedFloor = null;
 
         let image = null;
         let originalImageFile = null; // Store the original image file
@@ -1705,6 +1834,221 @@
             });
         }
 
+        // Extract unique floor numbers from roomsData and populate floor dropdown
+        function populateFloorDropdown() {
+            floorFilterSelect.disabled = true;
+            floorFilterSelect.innerHTML = '<option value="">-- All Floors --</option>';
+            
+            if (!roomsData) return;
+            
+            // Get the rooms array
+            let dataArray = Array.isArray(roomsData) ? roomsData : (roomsData.rooms || Object.values(roomsData));
+            
+            // Filter by selected building if one is selected
+            if (selectedBuilding) {
+                dataArray = dataArray.filter(room => {
+                    // Try different possible property names for building
+                    const roomBuilding = room.buildingDisplayName || room.buildingName || room.building || room.building_id || room.buildingId;
+                    return roomBuilding == selectedBuilding;
+                });
+            }
+            
+            // Extract unique floor numbers from filtered rooms
+            const uniqueFloors = new Set();
+            dataArray.forEach(room => {
+                if (room.floorNumber !== undefined && room.floorNumber !== null) {
+                    uniqueFloors.add(room.floorNumber);
+                }
+            });
+            
+            // Sort floors numerically
+            const sortedFloors = Array.from(uniqueFloors).sort((a, b) => a - b);
+            
+            // Add floor options to dropdown
+            sortedFloors.forEach(floor => {
+                const option = document.createElement('option');
+                option.value = floor;
+                option.textContent = `Floor ${floor}`;
+                floorFilterSelect.appendChild(option);
+            });
+            
+            floorFilterSelect.disabled = false;
+        }
+
+        // Populate room domain ID dropdowns for a specific tile
+        function populateRoomDomainIdDropdown(tileId) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (!tile) return;
+            
+            const tileDiv = document.querySelector(`[data-tile-id="${tileId}"]`);
+            if (!tileDiv) return;
+            
+            const select = tileDiv.querySelector('.room-domain-id-select');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select a room</option>';
+            
+            // Populate dropdown from roomsData
+            if (roomsData) {
+                // Handle the structure: roomsData = {rooms: Array, count: number}
+                let dataArray = Array.isArray(roomsData) ? roomsData : (roomsData.rooms || Object.values(roomsData));
+                
+                // Filter by selected building if one is selected
+                if (selectedBuilding) {
+                    dataArray = dataArray.filter(room => {
+                        // Try different possible property names for building
+                        const roomBuilding = room.buildingDisplayName || room.buildingName || room.building || room.building_id || room.buildingId;
+                        return roomBuilding == selectedBuilding;
+                    });
+                }
+                
+                // Filter by selected floor if one is selected
+                if (selectedFloor) {
+                    dataArray = dataArray.filter(room => room.floorNumber == selectedFloor);
+                }
+                
+                // Filter out bathroom rooms
+                dataArray = dataArray.filter(room => room.designation !== 'bathroom');
+                
+                // Filter out deleted or hidden rooms
+                dataArray = dataArray.filter(room => !room.deleted && !room.hide);
+                
+                // Sort rooms by display name
+                dataArray.sort((a, b) => {
+                    const displayNameA = a.displayName || a.name || a.display_name || a.roomName || '';
+                    const displayNameB = b.displayName || b.name || b.display_name || b.roomName || '';
+                    return (displayNameA || '').localeCompare(displayNameB || '');
+                });
+                
+                dataArray.forEach(room => {
+                    // Try different possible property names for display name and ID
+                    const displayName = room.displayName || room.name || room.display_name || room.roomName;
+                    const domainID = room.domainID || room.domainId || room.domain_id || room.id;
+                    
+                    if (displayName && domainID) {
+                        const option = document.createElement('option');
+                        option.value = domainID;
+                        option.textContent = `${displayName} (${domainID})`;
+                        select.appendChild(option);
+                    }
+                });
+                
+                // Set the selected value if tile has a roomDomainId
+                if (tile.roomDomainId) {
+                    select.value = tile.roomDomainId;
+                }
+            }
+        }
+
+        // Update all tile room domain ID dropdowns
+        function updateAllTileRoomDomainIdDropdowns() {
+            tiles.forEach(tile => {
+                populateRoomDomainIdDropdown(tile.id);
+            });
+        }
+
+        // Audit room domain IDs to find unused and duplicated entries
+        function auditRoomDomainIds() {
+            // Collect all room domain IDs from selected building and floor
+            const availableRoomIds = new Set();
+            
+            if (roomsData) {
+                let dataArray = Array.isArray(roomsData) ? roomsData : (roomsData.rooms || Object.values(roomsData));
+                
+                // Filter by selected building if one is selected
+                if (selectedBuilding) {
+                    dataArray = dataArray.filter(room => {
+                        const roomBuilding = room.buildingDisplayName || room.buildingName || room.building || room.building_id || room.buildingId;
+                        return roomBuilding == selectedBuilding;
+                    });
+                }
+                
+                // Filter by selected floor if one is selected
+                if (selectedFloor) {
+                    dataArray = dataArray.filter(room => room.floorNumber == selectedFloor);
+                }
+                
+                // Filter out bathroom rooms, deleted, and hidden rooms
+                dataArray = dataArray.filter(room => room.designation !== 'bathroom' && !room.deleted && !room.hide);
+                
+                // Collect all room IDs
+                dataArray.forEach(room => {
+                    const domainID = room.domainID || room.domainId || room.domain_id || room.id;
+                    if (domainID) {
+                        availableRoomIds.add(domainID);
+                    }
+                });
+            }
+            
+            // Collect all room domain IDs from tiles
+            const tilesRoomIds = new Map(); // Map to count occurrences
+            tiles.forEach(tile => {
+                if (tile.roomDomainId) {
+                    const count = (tilesRoomIds.get(tile.roomDomainId) || 0) + 1;
+                    tilesRoomIds.set(tile.roomDomainId, count);
+                }
+            });
+            
+            // Find unused room IDs (in availableRoomIds but not in tilesRoomIds)
+            const unusedRoomIds = [];
+            availableRoomIds.forEach(roomId => {
+                if (!tilesRoomIds.has(roomId)) {
+                    unusedRoomIds.push(roomId);
+                }
+            });
+            
+            // Find duplicated room IDs (appear more than once in tiles)
+            const duplicatedRoomIds = [];
+            tilesRoomIds.forEach((count, roomId) => {
+                if (count > 1) {
+                    duplicatedRoomIds.push(`${roomId} (${count} times)`);
+                }
+            });
+            
+            // Sort the results
+            unusedRoomIds.sort();
+            duplicatedRoomIds.sort();
+            
+            // Populate the unused rooms list
+            if (unusedRoomIds.length === 0) {
+                auditUnusedList.innerHTML = '<div class="audit-empty">All available rooms are being used ✓</div>';
+            } else {
+                auditUnusedList.innerHTML = unusedRoomIds.map(id => 
+                    `<div class="audit-list-item audit-warning">${id}</div>`
+                ).join('');
+            }
+            
+            // Populate the duplicates list
+            if (duplicatedRoomIds.length === 0) {
+                auditDuplicatesList.innerHTML = '<div class="audit-empty">No duplicate room IDs found ✓</div>';
+            } else {
+                auditDuplicatesList.innerHTML = duplicatedRoomIds.map(id => 
+                    `<div class="audit-list-item audit-warning">${id}</div>`
+                ).join('');
+            }
+            
+            // Find dots without room domain ID
+            const dotsWithoutRoomId = [];
+            tiles.forEach(tile => {
+                if (!tile.roomDomainId) {
+                    const label = tile.selectedLabel ? ` - Label: ${tile.selectedLabel}` : ' - No label';
+                    dotsWithoutRoomId.push(`Tile: ${tile.name}${label} (${tile.dots.length} dot${tile.dots.length !== 1 ? 's' : ''})`);
+                }
+            });
+            
+            // Populate the no room ID list
+            if (dotsWithoutRoomId.length === 0) {
+                auditNoRoomIdList.innerHTML = '<div class="audit-empty">All tiles have room domain IDs ✓</div>';
+            } else {
+                auditNoRoomIdList.innerHTML = dotsWithoutRoomId.map(item => 
+                    `<div class="audit-list-item audit-warning">${item}</div>`
+                ).join('');
+            }
+            
+            // Show the modal
+            auditRoomsModal.classList.add('show');
+        }
+
         // Create a new tile
         function createTile(label = '', dot = null, notes = '', roomNumber = '', roomDomainId = '') {
             const tile = {
@@ -1740,7 +2084,9 @@
                 </div>
                 <div class="control-group">
                     <label>Room Domain ID:</label>
-                    <input type="text" placeholder="Enter room domain ID" value="${tile.roomDomainId}" oninput="updateTileRoomDomainId(${tile.id}, this.value)">
+                    <select onchange="updateTileRoomDomainId(${tile.id}, this.value)" class="room-domain-id-select">
+                        <option value="">Select a room</option>
+                    </select>
                 </div>
                 <div class="control-group">
                     <label>Label:</label>
@@ -1779,8 +2125,8 @@
             
             tilesContainer.appendChild(tileDiv);
             
-            // Populate the dropdown
-            const select = tileDiv.querySelector('select');
+            // Populate the label dropdown
+            const select = tileDiv.querySelector('select:not(.room-domain-id-select)');
             Object.keys(labels).forEach(label => {
                 const option = document.createElement('option');
                 option.value = label;
@@ -1793,6 +2139,9 @@
             if (tile.selectedLabel) {
                 select.value = tile.selectedLabel;
             }
+            
+            // Populate the room domain ID dropdown
+            populateRoomDomainIdDropdown(tile.id);
         }
 
         // Set active tile
@@ -2248,6 +2597,7 @@
                     });
                     
                     updateAllTileDropdowns();
+                    updateAllTileRoomDomainIdDropdowns();
                     updateLabelsList();
                     draw();
                     alert('JSON data loaded successfully!');
@@ -2438,6 +2788,7 @@
                         });
                         
                         updateLabelsList();
+                        updateAllTileRoomDomainIdDropdowns();
                         draw();
                         
                     } catch (error) {
@@ -3356,6 +3707,20 @@
             fetchRoomsModal.classList.remove('show');
         });
 
+        // Audit rooms button
+        auditRoomsBtn.addEventListener('click', () => {
+            if (!roomsData) {
+                alert('Please fetch rooms data first!');
+                return;
+            }
+            auditRoomDomainIds();
+        });
+
+        // Audit rooms close button
+        auditRoomsCloseBtn.addEventListener('click', () => {
+            auditRoomsModal.classList.remove('show');
+        });
+
         // Organization dropdown change handler for rooms
         roomsOrgSelect.addEventListener('change', () => {
             populateRoomsBuildingsDropdown();
@@ -3369,7 +3734,7 @@
         fetchRoomsBtn.addEventListener('click', async () => {
             const token = roomsAccessTokenInput.value.trim();
             const selectedOrgId = roomsOrgSelect.value;
-            const selectedBuilding = roomsBuildingSelect.value;
+            const buildingValue = roomsBuildingSelect.value;
             
             if (!token) {
                 fetchRoomsStatus.textContent = 'Please enter an access token';
@@ -3377,7 +3742,7 @@
                 return;
             }
             
-            if (!selectedOrgId || !selectedBuilding) {
+            if (!selectedOrgId || !buildingValue) {
                 fetchRoomsStatus.textContent = 'Please select both organization and building';
                 fetchRoomsStatus.style.color = '#ff6b6b';
                 return;
@@ -3405,11 +3770,24 @@
 
                 const data = await response.json();
                 roomsData = data;
+                
+                // Store the selected building globally for filtering
+                selectedBuilding = roomsBuildingSelect.value;
+
+                // Reset floor filter when new rooms are fetched
+                selectedFloor = null;
+                floorFilterSelect.value = '';
+
+                // Update all tile room domain ID dropdowns with new rooms data
+                updateAllTileRoomDomainIdDropdowns();
+                
+                // Populate the floor filter dropdown with floors from the selected building
+                populateFloorDropdown();
 
                 fetchRoomsStatus.textContent = 'Successfully fetched rooms!';
                 fetchRoomsStatus.style.color = '#4CAF50';
 
-                console.log('Rooms data stored:', roomsData);
+
 
                 // Optional: Show alert with room count
                 const roomCount = Array.isArray(data) ? data.length : Object.keys(data).length;
@@ -3425,6 +3803,13 @@
                 fetchRoomsBtn.disabled = false;
                 fetchRoomsBtn.textContent = 'Fetch Rooms';
             }
+        });
+
+        // Floor filter dropdown change handler
+        floorFilterSelect.addEventListener('change', (e) => {
+            selectedFloor = e.target.value ? parseInt(e.target.value) : null;
+            // Update all room dropdowns to reflect the floor filter
+            updateAllTileRoomDomainIdDropdowns();
         });
 
         // Merge labels button
