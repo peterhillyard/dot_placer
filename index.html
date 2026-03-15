@@ -433,6 +433,197 @@
             background-color: #555;
         }
 
+        #fetch-orgs-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2001;
+            pointer-events: auto;
+        }
+
+        #fetch-orgs-modal.show {
+            display: block;
+        }
+
+        #fetch-orgs-content {
+            background-color: #1a1a1a;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 400px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        #fetch-orgs-content h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .fetch-orgs-group {
+            margin-bottom: 15px;
+        }
+
+        .fetch-orgs-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .fetch-orgs-group input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .fetch-orgs-group select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .fetch-orgs-group select:disabled {
+            background-color: #333;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        #fetchOrgsBtn, #fetchOrgsCancelBtn {
+            padding: 8px 15px;
+            border-radius: 3px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        #fetchOrgsCancelBtn {
+            background-color: #666;
+        }
+
+        #fetchOrgsBtn:hover {
+            background-color: #45a049;
+        }
+
+        #fetchOrgsCancelBtn:hover {
+            background-color: #555;
+        }
+
+        #fetch-orgs-status {
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #aaa;
+            min-height: 20px;
+        }
+
+        #fetch-rooms-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2001;
+            pointer-events: auto;
+        }
+
+        #fetch-rooms-modal.show {
+            display: block;
+        }
+
+        #fetch-rooms-content {
+            background-color: #1a1a1a;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 400px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        #fetch-rooms-content h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .fetch-rooms-group {
+            margin-bottom: 15px;
+        }
+
+        .fetch-rooms-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .fetch-rooms-group select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .fetch-rooms-group select:disabled {
+            background-color: #333;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        #fetchRoomsBtn, #fetchRoomsCancelBtn {
+            padding: 8px 15px;
+            border-radius: 3px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        #fetchRoomsCancelBtn {
+            background-color: #666;
+        }
+
+        #fetchRoomsBtn:hover {
+            background-color: #45a049;
+        }
+
+        #fetchRoomsCancelBtn:hover {
+            background-color: #555;
+        }
+
+        #fetchRoomsBtn:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+
+        #fetch-rooms-status {
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #aaa;
+            min-height: 20px;
+        }
+
         #preview-modal {
             display: none;
             position: fixed;
@@ -529,6 +720,12 @@
 <body>
     <div id="main-area">
         <div id="controls">
+            <div class="control-group">
+                <button id="fetchOrgsOpenBtn">Fetch Organizations</button>
+                <span id="orgsCountText" style="margin-left: 10px; font-size: 12px; color: #aaa;"></span>
+                <button id="fetchRoomsOpenBtn">Fetch Rooms</button>
+            </div>
+
             <div class="control-group">
                 <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png">
             </div>
@@ -661,6 +858,48 @@
         <div id="preview-info">This is how the saved image will look with the current dot size</div>
     </div>
 
+    <div id="fetch-orgs-modal">
+        <div id="fetch-orgs-content">
+            <h2>Fetch Organizations</h2>
+            <div id="fetch-orgs-status"></div>
+            <div class="fetch-orgs-group">
+                <label>Access Token:</label>
+                <input type="password" id="accessTokenInput" placeholder="Enter your access token">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="fetchOrgsBtn">Fetch</button>
+                <button id="fetchOrgsCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="fetch-rooms-modal">
+        <div id="fetch-rooms-content">
+            <h2>Fetch Rooms</h2>
+            <div id="fetch-rooms-status"></div>
+            <div class="fetch-rooms-group">
+                <label>Access Token:</label>
+                <input type="password" id="roomsAccessTokenInput" placeholder="Enter your access token">
+            </div>
+            <div class="fetch-rooms-group">
+                <label>Select Organization:</label>
+                <select id="roomsOrgSelect" disabled>
+                    <option value="">-- Choose an organization --</option>
+                </select>
+            </div>
+            <div class="fetch-rooms-group">
+                <label>Select Building:</label>
+                <select id="roomsBuildingSelect" disabled>
+                    <option value="">-- Choose a building --</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="fetchRoomsBtn" disabled>Fetch Rooms</button>
+                <button id="fetchRoomsCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         const canvas = document.getElementById('canvas');
@@ -701,6 +940,28 @@
         const mergeToLabel = document.getElementById('mergeToLabel');
         const mergeLabelsBtn = document.getElementById('mergeLabelsBtn');
         const mergeLabelsCancelBtn = document.getElementById('mergeLabelsCancelBtn');
+
+        const fetchOrgsOpenBtn = document.getElementById('fetchOrgsOpenBtn');
+        const orgsCountText = document.getElementById('orgsCountText');
+        const fetchOrgsModal = document.getElementById('fetch-orgs-modal');
+        const accessTokenInput = document.getElementById('accessTokenInput');
+        const fetchOrgsBtn = document.getElementById('fetchOrgsBtn');
+        const fetchOrgsCancelBtn = document.getElementById('fetchOrgsCancelBtn');
+        const fetchOrgsStatus = document.getElementById('fetch-orgs-status');
+
+        const fetchRoomsOpenBtn = document.getElementById('fetchRoomsOpenBtn');
+        const fetchRoomsModal = document.getElementById('fetch-rooms-modal');
+        const roomsAccessTokenInput = document.getElementById('roomsAccessTokenInput');
+        const roomsOrgSelect = document.getElementById('roomsOrgSelect');
+        const roomsBuildingSelect = document.getElementById('roomsBuildingSelect');
+        const fetchRoomsBtn = document.getElementById('fetchRoomsBtn');
+        const fetchRoomsCancelBtn = document.getElementById('fetchRoomsCancelBtn');
+        const fetchRoomsStatus = document.getElementById('fetch-rooms-status');
+
+        // Store fetched organizations data
+        let organizationsData = null;
+        // Store fetched rooms data
+        let roomsData = null;
 
         let image = null;
         let originalImageFile = null; // Store the original image file
@@ -1348,6 +1609,72 @@
             }
         }
 
+        // Populate the org dropdown for rooms modal
+        function populateRoomsOrgDropdown() {
+            roomsOrgSelect.innerHTML = '<option value="">-- Choose an organization --</option>';
+            
+            if (organizationsData && Array.isArray(organizationsData)) {
+                const sortedOrgs = [...organizationsData].sort((a, b) => {
+                    return (a.id || '').localeCompare(b.id || '');
+                });
+                
+                sortedOrgs.forEach(org => {
+                    if (org.id && org.name) {
+                        const option = document.createElement('option');
+                        option.value = org.id;
+                        option.textContent = org.id;
+                        roomsOrgSelect.appendChild(option);
+                    }
+                });
+            }
+            
+            roomsOrgSelect.disabled = false;
+        }
+
+        // Populate buildings dropdown when org is selected
+        function populateRoomsBuildingsDropdown() {
+            roomsBuildingSelect.innerHTML = '<option value="">-- Choose a building --</option>';
+            roomsBuildingSelect.disabled = true;
+            fetchRoomsBtn.disabled = true;
+            
+            const selectedOrgId = roomsOrgSelect.value;
+            if (!selectedOrgId || !organizationsData) return;
+            
+            const org = organizationsData.find(o => o.id === selectedOrgId);
+            if (org && org.roomCounts && Array.isArray(org.roomCounts)) {
+                // Get unique building names
+                const uniqueBuildings = new Set();
+                org.roomCounts.forEach(building => {
+                    if (building.buildingName) {
+                        uniqueBuildings.add(building.buildingName);
+                    }
+                });
+                
+                // Convert to sorted array
+                const sortedBuildings = Array.from(uniqueBuildings).sort((a, b) => {
+                    return (a || '').localeCompare(b || '');
+                });
+                
+                sortedBuildings.forEach((buildingName) => {
+                    const option = document.createElement('option');
+                    option.value = buildingName;
+                    option.textContent = buildingName;
+                    roomsBuildingSelect.appendChild(option);
+                });
+                
+                if (sortedBuildings.length > 0) {
+                    roomsBuildingSelect.disabled = false;
+                }
+            }
+        }
+
+        // Enable fetch button when building is selected
+        function updateFetchRoomsButton() {
+            const orgSelected = roomsOrgSelect.value !== '';
+            const buildingSelected = roomsBuildingSelect.value !== '';
+            fetchRoomsBtn.disabled = !(orgSelected && buildingSelected);
+        }
+
         // Make functions globally accessible
         window.setDefaultLabel = setDefaultLabel;
         window.updateLabelColor = updateLabelColor;
@@ -1379,14 +1706,15 @@
         }
 
         // Create a new tile
-        function createTile(label = '', dot = null, notes = '', roomNumber = '') {
+        function createTile(label = '', dot = null, notes = '', roomNumber = '', roomDomainId = '') {
             const tile = {
                 id: tileIdCounter++,
                 name: `Dot ${tileIdCounter}`,
                 selectedLabel: label,
                 dots: dot ? [dot] : [],
                 notes: notes,
-                roomNumber: roomNumber
+                roomNumber: roomNumber,
+                roomDomainId: roomDomainId
             };
             
             tiles.push(tile);
@@ -1409,6 +1737,10 @@
                 <div class="control-group">
                     <label>Room Number:</label>
                     <input type="text" placeholder="Enter room number" value="${tile.roomNumber}" oninput="updateTileRoomNumber(${tile.id}, this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Room Domain ID:</label>
+                    <input type="text" placeholder="Enter room domain ID" value="${tile.roomDomainId}" oninput="updateTileRoomDomainId(${tile.id}, this.value)">
                 </div>
                 <div class="control-group">
                     <label>Label:</label>
@@ -1513,6 +1845,14 @@
             }
         }
 
+        // Update tile room domain ID
+        function updateTileRoomDomainId(tileId, roomDomainId) {
+            const tile = tiles.find(t => t.id === tileId);
+            if (tile) {
+                tile.roomDomainId = roomDomainId;
+            }
+        }
+
         // Remove tile
         function removeTile(tileId) {
             const index = tiles.findIndex(t => t.id === tileId);
@@ -1608,7 +1948,8 @@
                         coordinate_pixels: [Math.round(dot.x), Math.round(dot.y)],
                         label: dot.label,
                         notes: tile.notes || '',
-                        roomNumber: tile.roomNumber || ''
+                        roomNumber: tile.roomNumber || '',
+                        roomDomainId: tile.roomDomainId || ''
                     });
                 });
             });
@@ -1902,7 +2243,7 @@
                         };
                         
                         // Create a tile for this dot
-                        const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '');
+                        const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '', dotData.roomDomainId || '');
                         updateTileDisplay(tile.id);
                     });
                     
@@ -2092,7 +2433,7 @@
                             };
                             
                             // Create a tile for this dot
-                            const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '');
+                            const tile = createTile(dotData.label, dot, dotData.notes || '', dotData.roomNumber || '', dotData.roomDomainId || '');
                             updateTileDisplay(tile.id);
                         });
                         
@@ -2122,6 +2463,7 @@
         window.updateTileLabel = updateTileLabel;
         window.updateTileNotes = updateTileNotes;
         window.updateTileRoomNumber = updateTileRoomNumber;
+        window.updateTileRoomDomainId = updateTileRoomDomainId;
         window.removeTile = removeTile;
 
         // Reset view
@@ -2919,6 +3261,169 @@
         previewModal.addEventListener('click', (e) => {
             if (e.target === previewModal) {
                 closePreview();
+            }
+        });
+
+        // Fetch organizations button
+        fetchOrgsOpenBtn.addEventListener('click', () => {
+            fetchOrgsModal.classList.add('show');
+            accessTokenInput.value = '';
+            fetchOrgsStatus.textContent = '';
+        });
+
+        // Fetch organizations cancel button
+        fetchOrgsCancelBtn.addEventListener('click', () => {
+            fetchOrgsModal.classList.remove('show');
+        });
+
+        // Fetch organizations button
+        fetchOrgsBtn.addEventListener('click', async () => {
+            const token = accessTokenInput.value.trim();
+            if (!token) {
+                fetchOrgsStatus.textContent = 'Please enter an access token';
+                fetchOrgsStatus.style.color = '#ff6b6b';
+                return;
+            }
+
+            fetchOrgsBtn.disabled = true;
+            fetchOrgsBtn.textContent = 'Fetching...';
+            fetchOrgsStatus.textContent = 'Fetching organizations...';
+            fetchOrgsStatus.style.color = '#aaa';
+
+            try {
+                const response = await fetch(
+                    'https://nowlpf8s0f.execute-api.us-east-1.amazonaws.com/production/organizations',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                organizationsData = data;
+
+                // Store locally (localStorage)
+                localStorage.setItem('organizationsData', JSON.stringify(data));
+
+                fetchOrgsStatus.textContent = 'Successfully fetched organizations!';
+                fetchOrgsStatus.style.color = '#4CAF50';
+
+                console.log('Organizations data stored:', organizationsData);
+
+                // Close the modal after a short delay
+                setTimeout(() => {
+                    fetchOrgsModal.classList.remove('show');
+                    
+                    // Update org count text
+                    const orgCount = Array.isArray(data) ? data.length : 0;
+                    orgsCountText.textContent = `(${orgCount} org${orgCount !== 1 ? 's' : ''} fetched)`;
+                }, 500);
+
+            } catch (error) {
+                fetchOrgsStatus.textContent = `Error: ${error.message}`;
+                fetchOrgsStatus.style.color = '#ff6b6b';
+                console.error('Error fetching organizations:', error);
+            } finally {
+                fetchOrgsBtn.disabled = false;
+                fetchOrgsBtn.textContent = 'Fetch';
+            }
+        });
+
+        // Fetch rooms button open
+        fetchRoomsOpenBtn.addEventListener('click', () => {
+            if (!organizationsData || !Array.isArray(organizationsData) || organizationsData.length === 0) {
+                alert('Please fetch organizations first!');
+                return;
+            }
+            
+            fetchRoomsModal.classList.add('show');
+            roomsAccessTokenInput.value = '';
+            roomsOrgSelect.value = '';
+            roomsBuildingSelect.value = '';
+            fetchRoomsStatus.textContent = '';
+            populateRoomsOrgDropdown();
+        });
+
+        // Fetch rooms cancel button
+        fetchRoomsCancelBtn.addEventListener('click', () => {
+            fetchRoomsModal.classList.remove('show');
+        });
+
+        // Organization dropdown change handler for rooms
+        roomsOrgSelect.addEventListener('change', () => {
+            populateRoomsBuildingsDropdown();
+            updateFetchRoomsButton();
+        });
+
+        // Building dropdown change handler for rooms
+        roomsBuildingSelect.addEventListener('change', updateFetchRoomsButton);
+
+        // Fetch rooms button
+        fetchRoomsBtn.addEventListener('click', async () => {
+            const token = roomsAccessTokenInput.value.trim();
+            const selectedOrgId = roomsOrgSelect.value;
+            const selectedBuilding = roomsBuildingSelect.value;
+            
+            if (!token) {
+                fetchRoomsStatus.textContent = 'Please enter an access token';
+                fetchRoomsStatus.style.color = '#ff6b6b';
+                return;
+            }
+            
+            if (!selectedOrgId || !selectedBuilding) {
+                fetchRoomsStatus.textContent = 'Please select both organization and building';
+                fetchRoomsStatus.style.color = '#ff6b6b';
+                return;
+            }
+
+            fetchRoomsBtn.disabled = true;
+            fetchRoomsBtn.textContent = 'Fetching...';
+            fetchRoomsStatus.textContent = 'Fetching rooms...';
+            fetchRoomsStatus.style.color = '#aaa';
+
+            try {
+                const apiUrl = `https://api.${selectedOrgId.toLowerCase()}-prod.augiapp.com/admin/v2/rooms`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                roomsData = data;
+
+                fetchRoomsStatus.textContent = 'Successfully fetched rooms!';
+                fetchRoomsStatus.style.color = '#4CAF50';
+
+                console.log('Rooms data stored:', roomsData);
+
+                // Optional: Show alert with room count
+                const roomCount = Array.isArray(data) ? data.length : Object.keys(data).length;
+                setTimeout(() => {
+                    alert(`Successfully fetched ${roomCount} room(s)!`);
+                }, 300);
+
+            } catch (error) {
+                fetchRoomsStatus.textContent = `Error: ${error.message}`;
+                fetchRoomsStatus.style.color = '#ff6b6b';
+                console.error('Error fetching rooms:', error);
+            } finally {
+                fetchRoomsBtn.disabled = false;
+                fetchRoomsBtn.textContent = 'Fetch Rooms';
             }
         });
 
