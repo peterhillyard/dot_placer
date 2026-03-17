@@ -795,87 +795,202 @@
         input[type="file"] {
             margin-bottom: 10px;
         }
+
+        .control-section {
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .control-section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 8px;
+            background-color: rgba(76, 175, 80, 0.15);
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+            user-select: none;
+            font-weight: bold;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+
+        .control-section-header:hover {
+            background-color: rgba(76, 175, 80, 0.25);
+        }
+
+        .control-section-toggle {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #fff;
+            transition: transform 0.2s;
+        }
+
+        .control-section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .control-section-content {
+            padding: 12px 8px;
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+
+        .control-section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding: 0;
+        }
+
+        .control-section-content .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-section-content .control-group:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
     <div id="main-area">
         <div id="controls">
-            <div class="control-group">
-                <button id="fetchOrgsOpenBtn">Fetch Organizations</button>
-                <span id="orgsCountText" style="margin-left: 10px; font-size: 12px; color: #aaa;"></span>
-                <button id="fetchRoomsOpenBtn">Fetch Rooms</button>
-            </div>
+            <!-- Group 1: Fetch Organizations, Fetch Rooms, Floor Filter -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>Data Sources</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <button id="fetchOrgsOpenBtn">Fetch Organizations</button>
+                        <span id="orgsCountText" style="margin-left: 10px; font-size: 12px; color: #aaa;"></span>
+                        <button id="fetchRoomsOpenBtn">Fetch Rooms</button>
+                    </div>
 
-            <div class="control-group">
-                <label>Floor Filter:</label>
-                <select id="floorFilterSelect" disabled>
-                    <option value="">-- All Floors --</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png">
-            </div>
-            
-            <div class="control-group">
-                <label>Load Dots Data:</label>
-                <input type="file" id="loadDotsInput" accept=".zip,application/zip">
-            </div>
-
-            <div class="control-group">
-                <label>Load JSON Only:</label>
-                <input type="file" id="loadJsonFromZipInput" accept=".zip,application/zip">
-            </div>
-
-            <div class="control-group">
-                <label>Pixels Per Meter:</label>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    <button id="calibrateBtn" style="flex: 1; margin: 0;">Calibrate</button>
-                    <input type="number" id="pixelsPerMeterInput" min="0.1" step="0.1" value="1" style="flex: 1;" readonly>
+                    <div class="control-group">
+                        <label>Floor Filter:</label>
+                        <select id="floorFilterSelect" disabled>
+                            <option value="">-- All Floors --</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
+            <!-- Group 2: File Chooser Buttons -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>File Input</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Load Dots Data:</label>
+                        <input type="file" id="loadDotsInput" accept=".zip,application/zip">
+                    </div>
 
-
-            <div class="control-group">
-                <label>Overlay Dot Size (pixels):</label>
-                <div class="dot-size-control">
-                    <input type="number" id="dotSizeInput" min="1" max="100" step="0.5" value="10">
-                    <button id="previewOverlayBtn">Preview</button>
+                    <div class="control-group">
+                        <label>Load JSON Only:</label>
+                        <input type="file" id="loadJsonFromZipInput" accept=".zip,application/zip">
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group">
-                <label>Circle Opacity:</label>
-                <div class="dot-size-control">
-                    <input type="range" id="circleOpacityInput" min="0" max="1" step="0.05" value="0.5" style="flex: 1;">
-                    <span id="opacityValue" style="width: 40px; text-align: right;">50%</span>
+            <!-- Group 3: Calibration Elements -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>Calibration</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <label>Pixels Per Meter:</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <button id="calibrateBtn" style="flex: 1; margin: 0;">Calibrate</button>
+                            <input type="number" id="pixelsPerMeterInput" min="0.1" step="0.1" value="1" style="flex: 1;" readonly>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group">
-                <label>Add New Label:</label>
-                <div class="add-label-group">
-                    <input type="text" id="newLabelInput" placeholder="Enter label name">
-                    <button id="addLabelBtn">Add</button>
+            <!-- Group 4: Overlay Dot Size -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>Overlay Dot Size</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <label>Size (pixels):</label>
+                        <div class="dot-size-control">
+                            <input type="number" id="dotSizeInput" min="1" max="100" step="0.5" value="10">
+                            <button id="previewOverlayBtn">Preview</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div id="labels-list">
-                <h4>Labels:</h4>
-                <div id="labels-container">
-                    <div style="font-size: 11px; color: #666;">No labels added yet</div>
+            <!-- Group 5: Opacity, Label Adder, and Label Config -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>Labels & Opacity</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <label>Circle Opacity:</label>
+                        <div class="dot-size-control">
+                            <input type="range" id="circleOpacityInput" min="0" max="1" step="0.05" value="0.5" style="flex: 1;">
+                            <span id="opacityValue" style="width: 40px; text-align: right;">50%</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Add New Label:</label>
+                        <div class="add-label-group">
+                            <input type="text" id="newLabelInput" placeholder="Enter label name">
+                            <button id="addLabelBtn">Add</button>
+                        </div>
+                    </div>
+
+                    <div id="labels-list">
+                        <h4>Labels:</h4>
+                        <div id="labels-container">
+                            <div style="font-size: 11px; color: #666;">No labels added yet</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group">
-                <button id="resetBtn">Reset View</button>
-                <button id="fitBtn">Fit to Screen</button>
-                <button id="auditRoomsBtn">Audit Rooms</button>
-                <button id="mergeLabelsOpenBtn">Merge Labels</button>
-                <button id="clearDotsBtn">Clear All Dots</button>
-                <button id="saveDotsBtn">Save Dots</button>
-                <button id="saveCsvBtn">Save as CSV</button>
+            <!-- Group 6: Bottom Buttons -->
+            <div class="control-section">
+                <div class="control-section-header">
+                    <span class="control-section-toggle">▾</span>
+                    <span>Actions</span>
+                </div>
+                <div class="control-section-content">
+                    <div class="control-group">
+                        <button id="resetBtn">Reset View</button>
+                        <button id="fitBtn">Fit to Screen</button>
+                        <button id="auditRoomsBtn">Audit Rooms</button>
+                        <button id="mergeLabelsOpenBtn">Merge Labels</button>
+                        <button id="clearDotsBtn">Clear All Dots</button>
+                        <button id="saveDotsBtn">Save Dots</button>
+                        <button id="saveCsvBtn">Save as CSV</button>
+                    </div>
+                </div>
             </div>
             
             <div id="info">
@@ -1147,6 +1262,35 @@
             'L': 12,      // 12 meters
             'GW': 45      // 45 meters
         };
+
+        // Initialize control section toggles
+        function initializeControlSectionToggles() {
+            const sections = document.querySelectorAll('.control-section');
+            sections.forEach(section => {
+                const header = section.querySelector('.control-section-header');
+                const content = section.querySelector('.control-section-content');
+                const toggle = section.querySelector('.control-section-toggle');
+
+                // All sections start open by default
+                content.classList.remove('collapsed');
+                toggle.classList.remove('collapsed');
+
+                // Add click handler to toggle
+                header.addEventListener('click', () => {
+                    const isCollapsed = content.classList.contains('collapsed');
+                    
+                    if (isCollapsed) {
+                        // Expand
+                        content.classList.remove('collapsed');
+                        toggle.classList.remove('collapsed');
+                    } else {
+                        // Collapse
+                        content.classList.add('collapsed');
+                        toggle.classList.add('collapsed');
+                    }
+                });
+            });
+        }
 
         // Set canvas size to main area size
         function resizeCanvas() {
@@ -3897,6 +4041,7 @@
         // Initialize
         resizeCanvas();
         initializeDefaultLabels();
+        initializeControlSectionToggles();
     </script>
 </body>
 </html>
